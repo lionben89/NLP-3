@@ -1,6 +1,11 @@
 import pandas as pd
 from sklearn import preprocessing
-import nltk 
+import nltk
+import os
+import gensim
+from gensim.models import Word2Vec
+import numpy as np
+
 nltk.download('punkt')
 
 dataset_structure = None
@@ -29,8 +34,9 @@ def preprocess(filename):
                          {"name": "user_handle", "func": dummy_encoder},
                          {"name": "text", "func": text_preprocess},
                          {"name": "timestamp", "func": timestamp_preprocess},
-                         {"name": "device", "func": label_encoder}]
-    column_names = list(map(lambda col_s: col_s["name"],dataset_structure))
+                         {"name": "device", "func": label_encoder},
+                         {"name": "embedding", "func": add_embeddings}]
+    column_names = list(map(lambda col_s: col_s["name"], dataset_structure))
     ds = load_data(filename, column_names)
     ds.dropna(thresh=0, inplace=True)
     for i in range(len(dataset_structure)):
@@ -71,7 +77,7 @@ def dummy_encoder(ds, column, name):
     """
     dummies = pd.get_dummies(ds[name], prefix=name)
     ds = ds.drop(columns=[name])
-    ds = pd.concat([ds,dummies],axis=1)
+    ds = pd.concat([ds, dummies], axis=1)
     return ds
 
 
@@ -141,6 +147,31 @@ def label_encoder(ds, column, name):
     le.fit(ds[name])
     ds[name] = le.transform(ds[name])
     ## iphone 0 , android 1
+    return ds
+
+
+def add_embeddings(ds, column, name):
+    """
+    Word embedding using gensim Word2Vec model. Loaded embeddings shouldn’t be larger than 6MB
+    https://radimrehurek.com/gensim/models/word2vec.html
+    Args:
+        ds:
+        column:
+        name:
+
+    Returns:
+
+    """
+    filename = "embeddings.csv"
+
+    if os.path.exists(filename):  # automatically load the embeddings by the relevant model
+        embeddings = pd.read_csv(filename)
+        ds = pd.concat([ds, embeddings], axis=1)
+    else:
+        w2v_model = gensim.models.Word2Vec(ds["text"], vector_size=100, window=5, sg=1)  # sg=1: skip gram
+        ds[name] = ds["text"].apply(lambda words: np.mean([w2v_model.wv[w] for w in words], axis=0))
+        ds[name].to_csv(filename)
+
     return ds
 
 
