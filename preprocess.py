@@ -5,6 +5,8 @@ import os
 import gensim
 from gensim.models import Word2Vec
 import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
 
 nltk.download('punkt')
 
@@ -150,6 +152,23 @@ def label_encoder(ds, column, name):
     return ds
 
 
+def get_embedding(st):
+    """
+
+    Args:
+        st:
+
+    Returns:
+
+    """
+    st = st[1:-1]
+    st = st.replace("\n", "")
+    lst = st.split(" ")
+    lst = list(filter(lambda a: a != "", lst))
+    lst = [float(i) for i in lst]
+    return np.array(lst)
+
+
 def add_embeddings(ds, column, name):
     """
     Word embedding using gensim Word2Vec model. Loaded embeddings shouldn’t be larger than 6MB
@@ -166,9 +185,11 @@ def add_embeddings(ds, column, name):
 
     if os.path.exists(filename):  # automatically load the embeddings by the relevant model
         embeddings = pd.read_csv(filename)
-        ds = pd.concat([ds, embeddings], axis=1)
+        ds[name] = embeddings[name].values
+        # ds[name] = ds[name].apply(lambda X: np.array(X))
+        ds[name] = ds[name].apply(lambda X: get_embedding(X))
     else:
-        w2v_model = gensim.models.Word2Vec(ds["text"], vector_size=100, window=5, sg=1)  # sg=1: skip gram
+        w2v_model = gensim.models.Word2Vec(ds["text"], min_count=1, vector_size=50, window=5, sg=1)  # sg=1: skip gram
         ds[name] = ds["text"].apply(lambda words: np.mean([w2v_model.wv[w] for w in words], axis=0))
         ds[name].to_csv(filename)
 
@@ -177,3 +198,5 @@ def add_embeddings(ds, column, name):
 
 if __name__ == '__main__':
     preprocess("trump_train.tsv")
+
+
