@@ -131,3 +131,5 @@ dmypy.json
 .lh/
 .vscode/
 .word_vectors_cache/glove.840B.300d.txt
+.word_vectors_cache/glove.840B.300d.txt.pt
+.word_vectors_cache/glove.840B.300d.zip

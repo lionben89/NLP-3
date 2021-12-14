@@ -6,11 +6,12 @@ from kfold import KFoldCV
 from classifier import LRClassifier, BasicNN
 
 if __name__ == '__main__':
-    vectore_size = 200
-    vectorize = TFIDF(vectore_size)
+    vectore_size = 1200
+    # vectorize = TFIDF(vectore_size)
+    vectorize = Glove(100,12)
     cls = BasicNN(shape=vectore_size)
+    # cls = LRClassifier()
     kf = KFoldCV(n_splits=5, shuffle=True)
-    # vectorize = Glove(20,10) not working yet
     ds = preprocess("trump_train.tsv")
     X, y = vectorize.fit_transform(ds['text'], ds['device'])
 

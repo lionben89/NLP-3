@@ -35,7 +35,7 @@ def preprocess(filename):
     for i in range(len(dataset_structure)):
         column_structure = dataset_structure[i]
         ds = column_structure["func"](ds, i, column_structure["name"])
-        ds.reset_index()
+        ds.reset_index(drop=True, inplace=True)
 
     return ds
 
