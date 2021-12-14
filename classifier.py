@@ -65,11 +65,11 @@ class BasicNN(Classifier):
 
     def train(self, X_train, y_train):
         X_train = torch.Tensor(X_train)
-        y_train = torch.LongTensor(np.array(y_train))
+        y_train = torch.LongTensor(y_train)
 
         for i in range(self.n_epochs):
             i += 1
-            y_pred = self.model.forward(X_train)
+            y_pred = self.model.forward(X_train) ## no batchs ?
             loss = self.criterion(y_pred, y_train)
             self.losses.append(loss)
 

@@ -67,7 +67,7 @@ class TFIDF(Vectorizer):
 
     def transform(self, text, labels):
         X = self.pca.transform(np.asarray(self.tfidf_vectorizer.transform(text.apply(lambda X: ' '.join(X))).todense()))
-        y = labels
+        y = np.asarray(labels)
         return X, y
 
 ## not working!

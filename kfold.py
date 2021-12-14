@@ -14,7 +14,7 @@ class KFoldCV():
 
         for train_index, test_index in self.kf.split(X, y):
             X_train, X_test = X[train_index], X[test_index]
-            y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+            y_train, y_test = y[train_index], y[test_index]
 
             cls.train(X_train, y_train)
             y_pred = cls.predict(X_test)

@@ -8,10 +8,11 @@ from classifier import LRClassifier, BasicNN
 if __name__ == '__main__':
     vectore_size = 200
     vectorize = TFIDF(vectore_size)
+    cls = BasicNN(shape=vectore_size)
+    kf = KFoldCV(n_splits=5, shuffle=True)
     # vectorize = Glove(20,10) not working yet
     ds = preprocess("trump_train.tsv")
     X, y = vectorize.fit_transform(ds['text'], ds['device'])
 
-    cls = BasicNN(shape=vectore_size)
-    kf = KFoldCV(n_splits=5, shuffle=True)
+
     kf.run_kfold_cv(X, y, cls)
