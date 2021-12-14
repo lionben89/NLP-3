@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 import torch
 import torch.nn as nn
 
@@ -41,6 +42,24 @@ class LRClassifier(Classifier):
 
     def predict(self, X_test):
         return self.logreg.predict(X_test)
+
+    def evaluate(self, X_test, Y_test):
+        pass
+    
+class SVMClassifier(Classifier):
+    def __init__(self, kernel = 'liner', gamma = 'scale'):
+        super().__init__()
+        self.svm = SVC(kernel=kernel,gamma=gamma)
+
+    def get_cls(self):
+        return self.svm
+
+    def train(self, X_train, y_train):
+        self.svm.fit(X_train, y_train)
+        return self
+
+    def predict(self, X_test):
+        return self.svm.predict(X_test)
 
     def evaluate(self, X_test, Y_test):
         pass
