@@ -16,7 +16,7 @@ TIMESTAMP_FEATURES = {
 }
 
 
-def preprocess(filename):
+def preprocess(filename, calc_features=False):
     """[summary]
 
     Args:
@@ -34,6 +34,7 @@ def preprocess(filename):
     column_names = list(map(lambda col_s: col_s["name"], dataset_structure))
     ds = load_data(filename, column_names)
     ds.dropna(thresh=0, inplace=True)
+
     for i in range(len(dataset_structure)):
         column_structure = dataset_structure[i]
         ds = column_structure["func"](ds, i, column_structure["name"])

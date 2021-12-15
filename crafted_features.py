@@ -1,20 +1,40 @@
-def calc_features(ds):
-    features_df_struct = [{"name": "n_words", "func": count_words},
-                          {"name": "n_unique_words", "func": count_unique_words},
-                          {"name": "n_capital_letters", "func": count_capitalized_letters},
-                          ]
-    ds = load_data(filename, column_names)
+from string import punctuation
 
-    for i in range(len(features_df_struct)):
-        column_structure = features_df_struct[i]
-        ds[column_structure["name"]] = column_structure["func"](ds["text"])
-        ds.reset_index(drop=True, inplace=True)
-    return ds
+import nltk
 
+from nltk import word_tokenize
+from nltk.corpus import stopwords
 
-def count_words(text):
-    return text.apply(lambda x: len(x))
+from preprocess import load_data, label_encoder
+import pandas as pd
+import re
+
+nltk.download('stopwords')
 
 
-def count_unique_words(text):
-    return text.apply(lambda x: len(set(x)))
+def calculate_features(file_name):
+    ds = load_data(file_name, ['tweet_id', 'user_handle', 'text', 'timestamp', 'device'])
+    ds.dropna(thresh=0, inplace=True)
+    ds = label_encoder(ds, None, "device")
+    ds.reset_index(drop=True, inplace=True)
+
+    text = ds["text"]
+    features_df = pd.DataFrame()
+    features_df["n_chars"] = text.apply(lambda x: len(x))
+    features_df["n_words"] = text.apply(lambda x: len(x.split(" ")))
+    features_df["avg_word_len"] = features_df["n_chars"] / features_df["n_words"]
+    features_df["n_punctuation"] = text.apply(lambda x: len("".join(c for c in x if c in punctuation)))
+    features_df["n_unique_words"] = text.apply(lambda x: len(set(x)))
+    features_df["n_upper_case_words"] = text.apply(lambda x: sum(map(str.isupper, x)))
+    features_df["n_stopwords"] = text.apply(lambda x: count_stopwords(x))
+    features_df["n_hashtags"] = text.apply(lambda x: len(re.findall(r"(?:^|\s)[＃#]{1}(\w+)", x)))
+    features_df["n_mentions"] = text.apply(lambda x: len(re.findall(r"(?:^|\s)[＠ @]{1}([^\s#<>[\]|{}]+)", x)))
+
+    return features_df
+
+
+def count_stopwords(x):
+    stop_words = set(stopwords.words('english'))
+    word_tokens = word_tokenize(x)
+    stopwords_x = [w for w in word_tokens if w in stop_words]
+    return len(stopwords_x)
