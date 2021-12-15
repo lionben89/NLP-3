@@ -45,11 +45,12 @@ class LRClassifier(Classifier):
 
     def evaluate(self, X_test, Y_test):
         pass
-    
+
+
 class SVMClassifier(Classifier):
-    def __init__(self, kernel = 'liner', gamma = 'scale'):
+    def __init__(self, kernel='liner', gamma='scale'):
         super().__init__()
-        self.svm = SVC(kernel=kernel,gamma=gamma)
+        self.svm = SVC(kernel=kernel, gamma=gamma)
 
     def get_cls(self):
         return self.svm
@@ -72,7 +73,8 @@ class BasicNN(Classifier):
             nn.Linear(shape, 64),
             nn.ReLU(),
             nn.Linear(64, 2),
-            nn.Sigmoid()
+            nn.Sigmoid(),
+
         )
         self.criterion = criterion
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.01)
@@ -83,18 +85,24 @@ class BasicNN(Classifier):
         return self.model
 
     def train(self, X_train, y_train):
+
         X_train = torch.Tensor(X_train)
         y_train = torch.LongTensor(y_train)
 
+        train = torch.utils.data.TensorDataset(X_train, y_train)
+        train_loader = torch.utils.data.DataLoader(train, batch_size=64, shuffle=False)
+
         for i in range(self.n_epochs):
             i += 1
-            y_pred = self.model.forward(X_train) ## no batchs ?
-            loss = self.criterion(y_pred, y_train)
-            self.losses.append(loss)
+            for i, data in enumerate(train_loader, 0):
+                inputs, labels = data
+                y_pred = self.model.forward(inputs)  ## no batchs ?
+                loss = self.criterion(y_pred, labels)
+                self.losses.append(loss)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
         return None
 
@@ -104,3 +112,4 @@ class BasicNN(Classifier):
 
     def evaluate(self, X_test, Y_test):
         pass
+
