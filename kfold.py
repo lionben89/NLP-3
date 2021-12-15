@@ -20,7 +20,7 @@ class KFoldCV():
             temp_cls = deepcopy(cls)
             temp_cls.train(X_train, y_train)
             y_pred = temp_cls.predict(X_test)
-            print("Fold number:{} result".format(i))
+            print("Fold number:{} finished".format(i))
             fold_scores = evaluate_metrics(y_test, y_pred)
             for key in scores:
                 scores[key] += fold_scores[key]
