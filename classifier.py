@@ -124,6 +124,8 @@ class LSTMNET(nn.Module):
         
     def forward(self, x):
         batch_size = x.size(0)
+        if (len(x.size())==2):
+            x = x.reshape(batch_size,-1,self.input_size)
         # Initializing hidden state for first input with zeros
         h0 = torch.zeros(self.n_layers, batch_size, self.linear_dim).requires_grad_()
 

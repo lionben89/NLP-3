@@ -7,7 +7,7 @@ from classifier import LRClassifier, BasicNN, SVMClassifier, LSTMClassifier
 
 if __name__ == '__main__':
     vectore_size = 50
-    number_of_words=8
+    number_of_words=10
     # vectorize = TFIDF(vectore_size)
     # vectorize = MeanW2V(W2VGlove(),vectore_size)
     # vectorize = MeanW2V(W2VGensim(min_count=1, vector_size=vectore_size, window=5, sg=1),vectore_size)
@@ -26,4 +26,4 @@ if __name__ == '__main__':
     X, y = vectorize.fit_transform(ds['text'], ds['device'])
     # vectorize.w2v.save(ds['text'])
 
-    kf.run_kfold_cv(X.reshape((-1,number_of_words,vectore_size)), y, cls)
+    kf.run_kfold_cv(X, y, cls)
