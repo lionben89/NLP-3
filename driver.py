@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # cls = SVMClassifier(kernel='linear')
     # cls = SVMClassifier(kernel='rbf')
     # cls = SVMClassifier(kernel='poly')
-    cls = LSTMClassifier(vectore_size,3,64,dropout=0.2)
+    cls = LSTMClassifier(vectore_size,2,64,dropout=0.2)
     
     kf = KFoldCV(n_splits=5, shuffle=True)
     ds = preprocess("trump_train.tsv")
