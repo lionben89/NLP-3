@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn import preprocessing
-import nltk 
+import nltk
+
 nltk.download('punkt')
 
 dataset_structure = None
@@ -14,7 +15,8 @@ TIMESTAMP_FEATURES = {
     "minute": True,
 }
 
-def preprocess(filename):
+
+def preprocess(filename, calc_features=False):
     """[summary]
 
     Args:
@@ -29,9 +31,10 @@ def preprocess(filename):
                          {"name": "text", "func": text_preprocess},
                          {"name": "timestamp", "func": timestamp_preprocess},
                          {"name": "device", "func": label_encoder}]
-    column_names = list(map(lambda col_s: col_s["name"],dataset_structure))
+    column_names = list(map(lambda col_s: col_s["name"], dataset_structure))
     ds = load_data(filename, column_names)
     ds.dropna(thresh=0, inplace=True)
+
     for i in range(len(dataset_structure)):
         column_structure = dataset_structure[i]
         ds = column_structure["func"](ds, i, column_structure["name"])
@@ -70,7 +73,7 @@ def dummy_encoder(ds, column, name):
     """
     dummies = pd.get_dummies(ds[name], prefix=name)
     ds = ds.drop(columns=[name])
-    ds = pd.concat([ds,dummies],axis=1)
+    ds = pd.concat([ds, dummies], axis=1)
     return ds
 
 
