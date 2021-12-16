@@ -13,7 +13,7 @@ class KFoldCV():
         scores = {'accuracy': 0, "fpr": 0, 'tpr': 0, 'precision': 0, 'recall': 0, 'auc': 0, 'f1': 0}
         i = 0
         for train_index, test_index in self.kf.split(X, y):
-            i+=1
+            i += 1
             print("Fold number:{} strat".format(i))
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
@@ -30,3 +30,4 @@ class KFoldCV():
             scores[key] /= self.n_splits
 
         print("K-Fold results:{}".format(scores))
+        return scores
