@@ -1,7 +1,7 @@
 from sklearn.model_selection import KFold
 from collections import Counter
 from copy import deepcopy
-from metrics import evaluate_metrics
+from metrics import evaluate_metrics, evaluate_roc
 
 
 class KFoldCV():
@@ -10,7 +10,7 @@ class KFoldCV():
         self.kf = KFold(n_splits=n_splits, shuffle=shuffle)
 
     def run_kfold_cv(self, X, y, cls):
-        scores = {'accuracy': 0, "fpr": 0, 'tpr': 0, 'precision': 0, 'recall': 0, 'auc': 0, 'f1': 0}
+        scores = {'accuracy': 0, 'precision': 0, 'recall': 0, 'auc': 0, 'f1': 0}
         i = 0
         for train_index, test_index in self.kf.split(X, y):
             i += 1
@@ -28,6 +28,10 @@ class KFoldCV():
         # get average scores
         for key in scores:
             scores[key] /= self.n_splits
+        
+        temp_cls = deepcopy(cls)
+        temp_cls.train(X,y)
+        y_prob = temp_cls.predict_proba(X)
+        fpr, tpr = evaluate_roc(y, y_prob)
 
-        # print("K-Fold results:{}".format(scores))
-        return scores
+        return scores, fpr, tpr

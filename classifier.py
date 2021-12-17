@@ -33,6 +33,14 @@ class Classifier(ABC):
     def predict(self, X_test):
         pass
 
+    @abstractmethod
+    def predict_proba(self, X_test):
+        pass
+
+    @abstractmethod
+    def to_string(self):
+        pass
+
     def save(self):
         pickle.dump(self.model, open(self.model_file_name, 'wb'))
         # dump(self.model, f'{self.model_file_name}.joblib')
@@ -58,30 +66,43 @@ class LRClassifier(Classifier):
     def predict(self, X_test):
         return self.model.predict(X_test)
 
+    def predict_proba(self, X_test):
+        return self.model.predict_proba(X_test)[:,1]
+
     def evaluate(self, X_test, Y_test):
         pass
+
+    def to_string(self):
+        return "Logistic_Regression"
 
 
 class SVMClassifier(Classifier):
     def __init__(self, kernel='liner', gamma='scale'):
         super().__init__()
-        self.svm = SVC(kernel=kernel, gamma=gamma)
+        self.kernel = kernel
+        self.model = SVC(kernel=kernel, gamma=gamma,probability=True)
 
     def get_cls(self):
-        return self.svm
+        return self.model
 
     def train(self, X_train, y_train):
-        self.svm.fit(X_train, y_train)
+        self.model.fit(X_train, y_train)
         return self
 
     def predict(self, X_test):
-        return self.svm.predict(X_test)
+        return self.model.predict(X_test)
+
+    def predict_proba(self, X_test):
+        return self.model.predict_proba(X_test)[:,1]
 
     def evaluate(self, X_test, Y_test):
         pass
 
     def save(self):
-        pickle.dump(self.svm, open(self.model_file_name, 'wb'))
+        pickle.dump(self.model, open(self.model_file_name, 'wb'))
+
+    def to_string(self):
+        return "SVM_{}".format(self.kernel)
 
 
 class BasicNN(Classifier):
@@ -107,9 +128,9 @@ class BasicNN(Classifier):
         y_train = torch.LongTensor(y_train)
 
         train = torch.utils.data.TensorDataset(X_train, y_train)
-        train_loader = torch.utils.data.DataLoader(train, batch_size=self.batch_size, shuffle=True, drop_last=True)
+        train_loader = torch.utils.data.DataLoader(
+            train, batch_size=self.batch_size, shuffle=True, drop_last=True)
         for i in range(self.n_epochs):
-
             for j, (X_t_loader, y_t_loader) in enumerate(train_loader):
                 y_pred_tensor = self.model.forward(X_t_loader)
                 loss = self.criterion(y_pred_tensor, y_t_loader)
@@ -130,8 +151,15 @@ class BasicNN(Classifier):
         tensor_pred = self.model(torch.Tensor(X_test))
         return tensor_pred.max(1).indices
 
+    def predict_proba(self, X_test):
+        tensor_pred = self.model(torch.Tensor(X_test))
+        return tensor_pred.detach().numpy()[:,1]
+
     def evaluate(self, X_test, Y_test):
         pass
+
+    def to_string(self):
+        return "DNN"
 
 
 class LSTMNET(nn.Module):
@@ -140,7 +168,8 @@ class LSTMNET(nn.Module):
         self.n_layers = n_layers
         self.linear_dim = linear_dim
         self.input_size = input_size
-        self.lstm = nn.LSTM(input_size, linear_dim, n_layers, dropout=dropout, batch_first=True)
+        self.lstm = nn.LSTM(input_size, linear_dim, n_layers,
+                            dropout=dropout, batch_first=True)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(linear_dim, 2)
         self.sigmoid = nn.Sigmoid()
@@ -150,10 +179,12 @@ class LSTMNET(nn.Module):
         if (len(x.size()) == 2):
             x = x.reshape(batch_size, -1, self.input_size)
         # Initializing hidden state for first input with zeros
-        h0 = torch.zeros(self.n_layers, batch_size, self.linear_dim).requires_grad_()
+        h0 = torch.zeros(self.n_layers, batch_size,
+                         self.linear_dim).requires_grad_()
 
         # Initializing cell state for first input with zeros
-        c0 = torch.zeros(self.n_layers, batch_size, self.linear_dim).requires_grad_()
+        c0 = torch.zeros(self.n_layers, batch_size,
+                         self.linear_dim).requires_grad_()
 
         # We need to detach as we are doing truncated backpropagation through time (BPTT)
         # If we don't, we'll backprop all the way to the start even after going through another batch
@@ -195,14 +226,15 @@ class LSTMClassifier(Classifier):
             for j in range(int(X_train_tensor.size()[0] // self.batch_size)):
                 y_pred_tensor = self.model.forward(
                     X_train_tensor[j * self.batch_size:(j + 1) * self.batch_size])  # no batchs ?
-                loss = self.criterion(y_pred_tensor, y_train_tensor[j * self.batch_size:(j + 1) * self.batch_size])
+                loss = self.criterion(
+                    y_pred_tensor, y_train_tensor[j * self.batch_size:(j + 1) * self.batch_size])
                 self.losses.append(loss)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-            with torch.no_grad():
-                y_pred = self.model.forward(X_train_tensor)
+            # with torch.no_grad():
+                #y_pred = self.model.forward(X_train_tensor)
                 # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
                 #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
 
@@ -212,8 +244,15 @@ class LSTMClassifier(Classifier):
         tensor_pred = self.model(torch.Tensor(X_test))
         return tensor_pred.max(1).indices
 
+    def predict_proba(self, X_test):
+        tensor_pred = self.model(torch.Tensor(X_test))
+        return tensor_pred.detach().numpy()[:,1]
+
     def evaluate(self, X_test, Y_test):
         pass
+
+    def to_string(self):
+        return "LSTM"
 
 
 class LSTMTextNN(nn.Module):
@@ -222,7 +261,8 @@ class LSTMTextNN(nn.Module):
         self.n_layers = n_layers
         self.linear_dim = linear_dim
         self.input_size = input_size
-        self.lstm = nn.LSTM(input_size, linear_dim, n_layers, dropout=dropout, batch_first=True)
+        self.lstm = nn.LSTM(input_size, linear_dim, n_layers,
+                            dropout=dropout, batch_first=True)
         self.dropout = nn.Dropout(dropout)
 
         self.fc1 = nn.Linear(linear_dim, dense_size)
@@ -236,10 +276,12 @@ class LSTMTextNN(nn.Module):
             x = x.reshape(batch_size, -1, self.input_size)
 
         # Initializing hidden state for first input with zeros
-        h0 = torch.zeros(self.n_layers, batch_size, self.linear_dim).requires_grad_()
+        h0 = torch.zeros(self.n_layers, batch_size,
+                         self.linear_dim).requires_grad_()
 
         # Initializing cell state for first input with zeros
-        c0 = torch.zeros(self.n_layers, batch_size, self.linear_dim).requires_grad_()
+        c0 = torch.zeros(self.n_layers, batch_size,
+                         self.linear_dim).requires_grad_()
 
         # We need to detach as we are doing truncated backpropagation through time (BPTT)
         # If we don't, we'll backprop all the way to the start even after going through another batch
@@ -266,7 +308,8 @@ class TextNumericalInputsClassifier(Classifier):
                  batch_size=32,
                  criterion=nn.CrossEntropyLoss()):
         super().__init__()
-        self.model = LSTMTextNN(vector_size, n_layers, linear_dim, dense_size, numeric_feature_size, dropout=0.5)
+        self.model = LSTMTextNN(
+            vector_size, n_layers, linear_dim, dense_size, numeric_feature_size, dropout=0.5)
         self.numeric_feature_size = numeric_feature_size
         self.batch_size = batch_size
         self.criterion = criterion
@@ -278,12 +321,16 @@ class TextNumericalInputsClassifier(Classifier):
         for i in range(self.n_epochs):
             self.model.train()
             X_train, y_train = shuffle(X_train, y_train)
-            X_train_tensor = torch.Tensor(X_train[:, self.numeric_feature_size:])
-            meta_data_tensor = torch.LongTensor(X_train[:, :self.numeric_feature_size])
+            X_train_tensor = torch.Tensor(
+                X_train[:, self.numeric_feature_size:])
+            meta_data_tensor = torch.LongTensor(
+                X_train[:, :self.numeric_feature_size])
             y_train_tensor = torch.LongTensor(y_train)
 
-            train = torch.utils.data.TensorDataset(X_train_tensor, meta_data_tensor, y_train_tensor)
-            train_loader = torch.utils.data.DataLoader(train, batch_size=self.batch_size, shuffle=True, drop_last=True)
+            train = torch.utils.data.TensorDataset(
+                X_train_tensor, meta_data_tensor, y_train_tensor)
+            train_loader = torch.utils.data.DataLoader(
+                train, batch_size=self.batch_size, shuffle=True, drop_last=True)
 
             for j, (X_t_loader, meta_t_loader, y_t_loader) in enumerate(train_loader):
                 y_pred_tensor = self.model.forward(X_t_loader, meta_t_loader)
@@ -295,19 +342,31 @@ class TextNumericalInputsClassifier(Classifier):
                 self.optimizer.step()
 
                 with torch.no_grad():
-                    y_pred = self.model.forward(X_train_tensor, meta_data_tensor)
+                    y_pred = self.model.forward(
+                        X_train_tensor, meta_data_tensor)
                 # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
                 #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
                 # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
 
     def predict(self, X_test):
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
-        meta_data_tensor = torch.LongTensor(X_test[:, :self.numeric_feature_size])
+        meta_data_tensor = torch.LongTensor(
+            X_test[:, :self.numeric_feature_size])
         tensor_pred = self.model(X_test_tensor, meta_data_tensor)
         return tensor_pred.max(1).indices
+    
+    def predict_proba(self, X_test):
+        X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
+        meta_data_tensor = torch.LongTensor(
+            X_test[:, :self.numeric_feature_size])
+        tensor_pred = self.model(X_test_tensor, meta_data_tensor)
+        return tensor_pred.detach().numpy()[:,1]
 
     def evaluate(self, X_test, Y_test):
         pass
 
     def get_cls(self):
         return self.model
+
+    def to_string(self):
+        return "LSTM_TEXT"

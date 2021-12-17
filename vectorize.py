@@ -45,6 +45,10 @@ class W2VCore(ABC):
             df[t] = self.get_vector(t).reshape(-1).tolist()
 
         df.to_pickle(path)
+    
+    @abstractmethod
+    def to_string(self):
+        pass
 
 
 class W2VGlove(W2VCore):
@@ -59,6 +63,9 @@ class W2VGlove(W2VCore):
 
     def save(self, text, path='./glove_reduced.pkl'):
         super().save(text, path)
+    
+    def to_string(self):
+        return "W2V_glove"
 
 
 class W2VGensim(W2VCore):
@@ -78,11 +85,15 @@ class W2VGensim(W2VCore):
 
     def save(self, text, path='./gensim_reduced.pkl'):
         super().save(text, path)
+        
+    def to_string(self):
+        return "W2V_gensim"
 
 
 class W2VReduced(W2VCore):
     def __init__(self, path):
         super().__init__(core=self.load_vectors(path))
+        self.path = path
 
     def load_vectors(self, filename):
         return pd.read_pickle(filename)
@@ -95,6 +106,9 @@ class W2VReduced(W2VCore):
             return self.w2v[token].to_numpy().T.reshape(1, -1)
         except:
             return np.zeros((1, int(self.w2v.shape[0])))
+
+    def to_string(self):
+        return "W2V_reduced_{}".format(self.path)
 
 
 class Vectorizer(ABC):
@@ -142,6 +156,9 @@ class ConcatW2V(Vectorizer):
                 embbedings[c * self.vector_length:(c + 1) * self.vector_length] = self.pca.transform(
                     self.w2v.get_vector(token))
         return np.array(X), np.array(y)
+    
+    def to_string(self):
+        return "Concat_{}".format(self.w2v.to_string())
 
 
 class MeanW2V(Vectorizer):
@@ -171,6 +188,9 @@ class MeanW2V(Vectorizer):
             y.append(labels[i])
         return np.array(X), np.array(y)
 
+    def to_string(self):
+        return "Mean_{}".format(self.w2v.to_string())
+
 
 class TFIDF(Vectorizer):
     def __init__(self, vector_length):
@@ -188,3 +208,6 @@ class TFIDF(Vectorizer):
             text.apply(lambda X: ' '.join(X))).todense()))
         y = np.array(labels)
         return X, y
+
+    def to_string(self):
+        return "TFIDF"
