@@ -96,14 +96,14 @@ def get_best_model(max_metric, X, y, kf):
         scores = kf.run_kfold_cv(X, y, cls)
         if scores[max_metric] > best_score:
             best_model = cls
+            best_score = scores[max_metric]
 
-        best_model.train(X, y)  # train on all of the data for generalization
+    best_model.train(X, y)  # train on all of the data for generalization
+    pred = best_model.predict(X)
+    print(best_model)
+    print(evaluate_metrics(y, pred))
 
-        pred = best_model.predict(X)
-        print(best_model)
-        print(evaluate_metrics(y, pred))
-
-        best_model.save()
+    best_model.save()
     print("final results:")
     print(best_model)
     print(evaluate_metrics(y, pred))
