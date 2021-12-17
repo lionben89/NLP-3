@@ -161,23 +161,6 @@ class MeanW2V(Vectorizer):
     def transform(self, text, labels):
         X = []
         y = []
-        # def set_emb(sentence):
-        #     embbedings = np.zeros(len(sentence) * self.vector_length)
-        #     for ind, word in enumerate(sentence):
-        #         embbedings[ind * self.vector_length: (
-        #             ind + 1) * self.vector_length] = self.w2v.get_vector(word)
-        #     return embbedings
-        # # self.gensim_w2v = gensim.models.Word2Vec(
-        #     # text, min_count=1, vector_size=self.vector_length, window=5, sg=1)
-        # arr = np.asarray(text.apply(lambda sentence: set_emb(sentence)))
-        # for label, emb in zip(labels, arr):
-        #     X.append(emb)
-        #     y.append(label)
-
-        # self.pca.fit(arr)
-
-        # self.pca.fit(
-        #     np.asarray(text.apply(lambda words: np.mean([self.w2v.get_vector(w) for w in words], axis=0)).todense()))
         for i in range(len(text)):
             sentence = text[i]
             vectors = []

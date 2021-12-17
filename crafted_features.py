@@ -12,11 +12,17 @@ import re
 nltk.download('stopwords')
 
 
-def calculate_features(file_name):
-    ds = load_data(file_name, ['tweet_id', 'user_handle', 'text', 'timestamp', 'device'])
-    ds.dropna(thresh=0, inplace=True)
-    ds = label_encoder(ds, None, "device")
-    ds.reset_index(drop=True, inplace=True)
+def calculate_features(file_name, train=True):
+    if train:
+        col_list = ['tweet_id', 'user_handle', 'text', 'timestamp', 'device']
+        ds = load_data(file_name, col_list)
+        ds.dropna(thresh=0, inplace=True)
+        ds = label_encoder(ds, None, "device")
+        ds.reset_index(drop=True, inplace=True)
+    else:
+        col_list = ['user_handle', 'text', 'timestamp']
+        ds = load_data(file_name, col_list)
+        ds.dropna(thresh=0, inplace=True)
 
     text = ds["text"]
     features_df = pd.DataFrame()
