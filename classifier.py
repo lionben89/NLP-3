@@ -123,7 +123,7 @@ class BasicNN(Classifier):
                 y_pred = self.model.forward(X_train)
             # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
             #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
-            print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
+            # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
         return None
 
     def predict(self, X_test):
@@ -298,7 +298,7 @@ class TextNumericalInputsClassifier(Classifier):
                     y_pred = self.model.forward(X_train_tensor, meta_data_tensor)
                 # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
                 #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
-                print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
+                # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
 
     def predict(self, X_test):
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])

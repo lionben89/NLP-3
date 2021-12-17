@@ -16,7 +16,7 @@ TIMESTAMP_FEATURES = {
 }
 
 
-def preprocess(filename, calc_features=False):
+def preprocess(filename, train=True):
     """[summary]
 
     Args:
@@ -25,12 +25,18 @@ def preprocess(filename, calc_features=False):
     Returns:
         [type]: [description]
     """
+    dataset_train_structure = [{"name": "tweet_id", "func": empty_func},
+                               {"name": "user_handle", "func": dummy_encoder},
+                               {"name": "text", "func": text_preprocess},
+                               {"name": "timestamp", "func": timestamp_preprocess},
+                               {"name": "device", "func": label_encoder}]
 
-    dataset_structure = [{"name": "tweet_id", "func": empty_func},
-                         {"name": "user_handle", "func": dummy_encoder},
-                         {"name": "text", "func": text_preprocess},
-                         {"name": "timestamp", "func": timestamp_preprocess},
-                         {"name": "device", "func": label_encoder}]
+    dataset_test_structure = [{"name": "user_handle", "func": dummy_encoder},
+                              {"name": "text", "func": text_preprocess},
+                              {"name": "timestamp", "func": timestamp_preprocess}]
+
+    dataset_structure = dataset_train_structure if train else dataset_test_structure
+
     column_names = list(map(lambda col_s: col_s["name"], dataset_structure))
     ds = load_data(filename, column_names)
     ds.dropna(thresh=0, inplace=True)
