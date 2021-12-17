@@ -12,7 +12,7 @@ import numpy as np
 VECTOR_SIZE = 50
 NUM_OF_WORDS = 10
 ID_1 = 313278889
-ID_2 = 222222222  # todo: change
+ID_2 = 302680665
 N_META_FEATURES = 9
 BEST_CLS = TextNumericalInputsClassifier(vector_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
                                          dense_size=64, numeric_feature_size=N_META_FEATURES,
@@ -128,6 +128,7 @@ if __name__ == '__main__':
     # save_pred_to_file(preds)
     # train_best_model()
 
+    """ MAIN CODE FIND BEST"""
     vectorize_methods = [TFIDF(VECTOR_SIZE),
                          MeanW2V(W2VGlove(), VECTOR_SIZE),
                          # MeanW2V(W2VGensim(min_count=1, vector_size=VECTOR_SIZE, window=5, sg=1), VECTOR_SIZE),
@@ -139,8 +140,15 @@ if __name__ == '__main__':
     for vectorize in vectorize_methods:
         X, y = vectorize.fit_transform(ds['text'], ds['device'])
         get_best_model("accuracy", X, y, kf)
-
-    # vectorize.w2v.save(ds['text'])
+    
+    """ SAVE W2V CODE"""
+    # ds = preprocess('trump_train.tsv', train=True)
+    # vectorize1 = MeanW2V(W2VGlove(), VECTOR_SIZE)
+    # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
+    # vectorize1.w2v.save(ds['text'])
+    # vectorize1 = MeanW2V(W2VGensim(), VECTOR_SIZE)
+    # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
+    # vectorize1.w2v.save(ds['text'])
 
     # for meta-features addition
     # meta_features = calculate_features("trump_train.tsv").to_numpy()
