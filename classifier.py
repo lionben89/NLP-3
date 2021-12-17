@@ -35,11 +35,9 @@ class Classifier(ABC):
 
     def save(self):
         pickle.dump(self.model, open(self.model_file_name, 'wb'))
-        # dump(self.model, f'{self.model_file_name}.joblib')
 
     def load(self):
         self.model = pickle.load(open(self.model_file_name, 'rb'))
-        # self.model = load(f'{self.model_file_name}.joblib')
         return self
 
 
