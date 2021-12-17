@@ -11,6 +11,7 @@ from visualize import plot_all
 import numpy as np
 
 VECTOR_SIZE = 50
+CONCAT_VECTOR_SIZE = 20
 NUM_OF_WORDS = 10
 ID_1 = 313278889
 ID_2 = 302680665
@@ -85,15 +86,15 @@ def get_best_model(max_metric, fn):
     data = []
     vectorize_methods = [
         TFIDF(VECTOR_SIZE),
-        MeanW2V(W2VReduced('./glove_reduced.pkl'), VECTOR_SIZE),
-        MeanW2V(W2VReduced('./gensim_reduced.pkl'), VECTOR_SIZE),
-        ConcatW2V(W2VReduced('./glove_reduced.pkl'),
-                  VECTOR_SIZE, NUM_OF_WORDS),
-        ConcatW2V(W2VReduced('./gensim_reduced.pkl'),
-                  VECTOR_SIZE, NUM_OF_WORDS),
-        # MeanW2V(W2VGlove(), VECTOR_SIZE),
-        # MeanW2V(W2VGensim(min_count=1, vector_size=VECTOR_SIZE, window=5, sg=1), VECTOR_SIZE),
-        # ConcatW2V(W2VGlove(), VECTOR_SIZE, NUM_OF_WORDS),
+        MeanW2V(W2VReduced('./glove_reduced_50.pkl'), VECTOR_SIZE),
+        MeanW2V(W2VReduced('./gensim_reduced_50.pkl'), VECTOR_SIZE),
+        ConcatW2V(W2VReduced('./glove_reduced_20.pkl'),
+                  CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        ConcatW2V(W2VReduced('./gensim_reduced_20.pkl'),
+                  CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        
+        # ConcatW2V(W2VGlove(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        # ConcatW2V(W2VGensim(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
     ]
 
     kf = KFoldCV(n_splits=5, shuffle=True)
@@ -101,23 +102,34 @@ def get_best_model(max_metric, fn):
     for vectorize in vectorize_methods:
         if  isinstance(vectorize, ConcatW2V):
             num_of_words = NUM_OF_WORDS
+            vector_size = CONCAT_VECTOR_SIZE
         else:
             num_of_words = 1
+            vector_size = VECTOR_SIZE
             
         cls_list = [
             LRClassifier(),
             SVMClassifier(kernel='linear'),
             SVMClassifier(kernel='rbf'),
-            SVMClassifier(kernel='poly'),
-            BasicNN(input_size=VECTOR_SIZE*num_of_words, n_epochs=3),
-            LSTMClassifier(VECTOR_SIZE, 2, 64, dropout=0.2),
-            TextNumericalInputsClassifier(vector_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
+            #SVMClassifier(kernel='poly'),
+            BasicNN(input_size=vector_size*num_of_words, n_epochs=3),
+            LSTMClassifier(vector_size, 2, 64, dropout=0.2),
+            TextNumericalInputsClassifier(vector_size=vector_size, n_layers=2, linear_dim=64,
                                           dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2)
         ]
-        X, y = vectorize.fit_transform(ds['text'], ds['device'])
+        
+        if  (isinstance(vectorize, ConcatW2V) and isinstance(cls, TextNumericalInputsClassifier)):
+            X, y, m = vectorize.fit_transform(ds['text'], ds['device'], meta_features)           
+        else:
+            X, y = vectorize.fit_transform(ds['text'], ds['device'])
+            
         for cls in cls_list:
             if isinstance(cls, TextNumericalInputsClassifier):
-                X = np.hstack((meta_features, X))
+                if  (isinstance(vectorize, ConcatW2V)):
+                    X = np.hstack((m, X))  
+                else:  
+                    X = np.hstack((meta_features, X))
+                    
             print("running {}_{}".format(cls.to_string(), vectorize.to_string()))
             scores, fpr, tpr = kf.run_kfold_cv(X, y, cls)
             print("{}_{} results are: {}".format(
@@ -158,16 +170,15 @@ if __name__ == '__main__':
     # train_best_model()
 
     """ MAIN CODE FIND BEST"""
-
     data = get_best_model("accuracy", "trump_train.tsv")
     plot_all(data)
 
     """ SAVE W2V CODE"""
     # ds = preprocess('trump_train.tsv', train=True)
-    # vectorize1 = MeanW2V(W2VGlove(), VECTOR_SIZE)
+    # vectorize1 = MeanW2V(W2VGlove(), CONCAT_VECTOR_SIZE)
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
-    # vectorize1 = MeanW2V(W2VGensim(), VECTOR_SIZE)
+    # vectorize1 = MeanW2V(W2VGensim(), CONCAT_VECTOR_SIZE)
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
 

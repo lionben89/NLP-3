@@ -14,7 +14,7 @@ class KFoldCV():
         i = 0
         for train_index, test_index in self.kf.split(X, y):
             i += 1
-            # print("Fold number:{} strat".format(i))
+            print("Fold number:{} start".format(i))
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
             temp_cls = deepcopy(cls)
