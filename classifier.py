@@ -88,7 +88,11 @@ class BasicNN(Classifier):
         self.model = nn.Sequential(
             nn.Linear(input_size, 64),
             nn.ReLU(),
-            nn.Linear(64, 2),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.ReLU(),
+            nn.Linear(32, 2),
             nn.Sigmoid()
         )
         self.criterion = criterion
