@@ -2,16 +2,16 @@ from copy import deepcopy
 
 from crafted_features import calculate_features
 from metrics import evaluate_metrics
-from torchviz import make_dot
-import torch
+
 from preprocess import preprocess
 from vectorize import TFIDF, W2VGensim, W2VReduced, W2VGlove, MeanW2V, ConcatW2V
 from kfold import KFoldCV
 from classifier import LRClassifier, BasicNN, SVMClassifier, LSTMClassifier, TextNumericalInputsClassifier
+from visualize import plot_all
 import numpy as np
-import matplotlib.pyplot as plt
 
 VECTOR_SIZE = 50
+CONCAT_VECTOR_SIZE = 20
 NUM_OF_WORDS = 10
 ID_1 = 313278889
 ID_2 = 302680665
@@ -77,45 +77,77 @@ def predict(m, fn):
     return list(y_pred.detach().numpy())
 
 
-def get_best_model(max_metric, X, y, kf):
+def get_best_model(max_metric, fn):
     best_model = None
+    best_vectorize = None
     best_score = 0
-    meta_features = calculate_features("trump_train.tsv").to_numpy()
-    all_scores = {}
+    ds = preprocess(fn)
+    meta_features = calculate_features(fn).to_numpy()
+    data = []
+    vectorize_methods = [
+        TFIDF(VECTOR_SIZE),
+        MeanW2V(W2VReduced('./glove_reduced_50.pkl'), VECTOR_SIZE),
+        MeanW2V(W2VReduced('./gensim_reduced_50.pkl'), VECTOR_SIZE),
+        ConcatW2V(W2VReduced('./glove_reduced_20.pkl'),
+                  CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        ConcatW2V(W2VReduced('./gensim_reduced_20.pkl'),
+                  CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
 
-    cls_dict = {
-        # "basic_NN": BasicNN(input_size=X.shape[1], n_epochs=3),
-        # "LSTM": LSTMClassifier(X.shape[1], 2, 64, dropout=0.2),
-        "LSTM_crafted": TextNumericalInputsClassifier(vector_size=X.shape[1], n_layers=2, linear_dim=64,
-                                                      dense_size=64, numeric_feature_size=meta_features.shape[1],
-                                                      dropout=0.2),
-        "LR": LRClassifier(),
-        "SVM_linear": SVMClassifier(kernel='linear'),
-        "SVM_rbf": SVMClassifier(kernel='rbf'),
-        "SVM_poly": SVMClassifier(kernel='poly'),
-    }
-    for name in cls_dict:
+        # ConcatW2V(W2VGlove(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        # ConcatW2V(W2VGensim(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+    ]
 
-        print(name)
-        cls = cls_dict[name]
-        if isinstance(cls, TextNumericalInputsClassifier):
-            X = np.hstack((meta_features, X))
-        scores = kf.run_kfold_cv(X, y, cls)
-        all_scores[name] = scores
+    kf = KFoldCV(n_splits=5, shuffle=True)
 
-        if scores[max_metric] > best_score:
-            best_model = cls
-            best_score = scores[max_metric]
+    for vectorize in vectorize_methods:
+        if isinstance(vectorize, ConcatW2V):
+            num_of_words = NUM_OF_WORDS
+            vector_size = CONCAT_VECTOR_SIZE
+        else:
+            num_of_words = 1
+            vector_size = VECTOR_SIZE
 
-    best_model.train(X, y)  # train on all of the data for generalization
-    pred = best_model.predict(X)
+        cls_list = [
+            LRClassifier(),
+            SVMClassifier(kernel='linear'),
+            SVMClassifier(kernel='rbf'),
+            # SVMClassifier(kernel='poly'),
+            BasicNN(input_size=vector_size * num_of_words, n_epochs=3),
+            LSTMClassifier(vector_size, 2, 64, dropout=0.2),
+            TextNumericalInputsClassifier(vector_size=vector_size, n_layers=2, linear_dim=64,
+                                          dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2)
+        ]
 
-    best_model.save()
+        if (isinstance(vectorize, ConcatW2V) and isinstance(cls, TextNumericalInputsClassifier)):
+            X, y, m = vectorize.fit_transform(ds['text'], ds['device'], meta_features)
+        else:
+            X, y = vectorize.fit_transform(ds['text'], ds['device'])
+
+        for cls in cls_list:
+            if isinstance(cls, TextNumericalInputsClassifier):
+                if (isinstance(vectorize, ConcatW2V)):
+                    X = np.hstack((m, X))
+                else:
+                    X = np.hstack((meta_features, X))
+
+            print("running {}_{}".format(cls.to_string(), vectorize.to_string()))
+            scores, fpr, tpr = kf.run_kfold_cv(X, y, cls)
+            print("{}_{} results are: {}".format(
+                cls.to_string(), vectorize.to_string(), scores))
+            data.append({"classifier": cls, "scores": scores,
+                         "vectorize": vectorize, "fpr": fpr, "tpr": tpr})
+            if scores[max_metric] > best_score:
+                best_model = cls
+                best_vectorize = vectorize
+                best_score = scores[max_metric]
 
     print("final results:")
-    print(best_model)
-    evaluate_metrics(y, pred)
-    return all_scores
+    best_model.train(X, y)  # train on all of the data for generalization
+    pred = best_model.predict(X)
+    print("best_model is: {}_{}".format(best_model.to_string(), best_vectorize.to_string()))
+    print(evaluate_metrics(y, pred))
+    best_model.save()
+    return data
 
 
 def save_pred_to_file(pred_list):
@@ -132,58 +164,21 @@ def save_pred_to_file(pred_list):
 
 
 if __name__ == '__main__':
-
     # cls = load_best_model()
     # preds = predict(cls, "trump_test.tsv")
     # save_pred_to_file(preds)
     # train_best_model()
 
     """ MAIN CODE FIND BEST"""
-    vectorize_methods = {
-        "mean W2V gensim": MeanW2V(W2VGensim(min_count=1, vector_size=VECTOR_SIZE, window=5, sg=1), VECTOR_SIZE),
-        # "Concat W2V gensim": ConcatW2V(W2VReduced('./gensim_reduced.pkl'), VECTOR_SIZE, NUM_OF_WORDS),
-        # "Concat W2V Glove": ConcatW2V(W2VGlove(), VECTOR_SIZE, NUM_OF_WORDS),
-        "TFIDF": TFIDF(VECTOR_SIZE),
-        "mean W2V Glove": MeanW2V(W2VGlove(), VECTOR_SIZE),
-    }
-    kf = KFoldCV(n_splits=5, shuffle=True)
-    ds = preprocess("trump_train.tsv")
-
-    acc_dict = {}
-    for vectorize_name in vectorize_methods:
-        vectorize = vectorize_methods[vectorize_name]
-        X, y = vectorize.fit_transform(ds['text'], ds['device'])
-        cls = TextNumericalInputsClassifier(vector_size=X.shape[1], n_layers=2, linear_dim=64,
-                                                      dense_size=64, numeric_feature_size=9,
-                                                      dropout=0.2)
-        meta_features = calculate_features("trump_train.tsv").to_numpy()
-        if isinstance(cls, TextNumericalInputsClassifier):
-            X = np.hstack((meta_features, X))
-
-        scores = kf.run_kfold_cv(X, y, cls)
-        acc_dict[vectorize_name] = scores["accuracy"]
-        # all_scores = get_best_model("accuracy", X, y, kf)
-    import pandas as pd
-    import seaborn as sns
-
-    df = pd.DataFrame(acc_dict, index=[0, 1, 2, 3, 4])
-    ax = sns.barplot(data=df)
-    for p in ax.patches:
-        ax.annotate("%.2f" % p.get_height(), (p.get_x() + p.get_width() / 2., p.get_height() * 0.95),
-                    ha='center', va='center', fontsize=12, color='black', xytext=(0, 20),
-                    textcoords='offset points')
-    plt.ylabel("accuracy")
-    ax.set_xticklabels(ax.get_xticklabels(), fontsize=8)
-    plt.tight_layout()
-    plt.title("Accuracy Rate Comparison - LSTM + Meta Features")
-    plt.show()
+    data = get_best_model("accuracy", "trump_train.tsv")
+    plot_all(data)
 
     """ SAVE W2V CODE"""
     # ds = preprocess('trump_train.tsv', train=True)
-    # vectorize1 = MeanW2V(W2VGlove(), VECTOR_SIZE)
+    # vectorize1 = MeanW2V(W2VGlove(), CONCAT_VECTOR_SIZE)
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
-    # vectorize1 = MeanW2V(W2VGensim(), VECTOR_SIZE)
+    # vectorize1 = MeanW2V(W2VGensim(), CONCAT_VECTOR_SIZE)
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
 

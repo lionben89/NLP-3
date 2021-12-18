@@ -45,6 +45,10 @@ class W2VCore(ABC):
             df[t] = self.get_vector(t).reshape(-1).tolist()
 
         df.to_pickle(path)
+    
+    @abstractmethod
+    def to_string(self):
+        pass
 
 
 class W2VGlove(W2VCore):
@@ -57,8 +61,11 @@ class W2VGlove(W2VCore):
     def get_vector(self, token):
         return self.w2v[token].numpy().reshape(1, -1)
 
-    def save(self, text, path='./glove_reduced.pkl'):
+    def save(self, text, path="./glove_reduced.pkl"):
         super().save(text, path)
+    
+    def to_string(self):
+        return "W2V_glove"
 
 
 class W2VGensim(W2VCore):
@@ -78,11 +85,15 @@ class W2VGensim(W2VCore):
 
     def save(self, text, path='./gensim_reduced.pkl'):
         super().save(text, path)
+        
+    def to_string(self):
+        return "W2V_gensim"
 
 
 class W2VReduced(W2VCore):
     def __init__(self, path):
         super().__init__(core=self.load_vectors(path))
+        self.path = path
 
     def load_vectors(self, filename):
         return pd.read_pickle(filename)
@@ -95,6 +106,9 @@ class W2VReduced(W2VCore):
             return self.w2v[token].to_numpy().T.reshape(1, -1)
         except:
             return np.zeros((1, int(self.w2v.shape[0])))
+
+    def to_string(self):
+        return "W2V_reduced_{}".format(self.path)
 
 
 class Vectorizer(ABC):
@@ -111,9 +125,9 @@ class Vectorizer(ABC):
     def transform(self, text, labels):
         pass
 
-    def fit_transform(self, text, labels):
+    def fit_transform(self, text, labels, meta_features=None):
         self.fit(text)
-        return self.transform(text, labels)
+        return self.transform(text, labels, meta_features)
 
 
 class ConcatW2V(Vectorizer):
@@ -125,9 +139,10 @@ class ConcatW2V(Vectorizer):
     def fit(self, text):
         self.pca.fit(self.w2v.text_to_vectors(text))
 
-    def transform(self, text, labels):
+    def transform(self, text, labels,meta_features):
         X = []
         y = []
+        m = []
         for i in range(len(text)):
             sentence = text[i]
             embbedings = np.zeros(self.number_of_words * self.vector_length)
@@ -136,12 +151,21 @@ class ConcatW2V(Vectorizer):
                 if (c == 0 and j > 0):
                     X.append(embbedings)
                     y.append(labels[i])
+                    if (meta_features is not None):
+                        m.append(meta_features[i])
                     embbedings = np.zeros(
                         self.number_of_words * self.vector_length)
                 token = sentence[j]
                 embbedings[c * self.vector_length:(c + 1) * self.vector_length] = self.pca.transform(
                     self.w2v.get_vector(token))
-        return np.array(X), np.array(y)
+
+        if meta_features is not None:
+            return np.array(X), np.array(y), np.array(m)
+        else:
+            return np.array(X), np.array(y)
+    
+    def to_string(self):
+        return "Concat_{}".format(self.w2v.to_string())
 
 
 class MeanW2V(Vectorizer):
@@ -158,9 +182,10 @@ class MeanW2V(Vectorizer):
         vectors = np.array(vectors)
         self.pca.fit(vectors)
 
-    def transform(self, text, labels):
+    def transform(self, text, labels,meta_features):
         X = []
         y = []
+        m = []
         for i in range(len(text)):
             sentence = text[i]
             vectors = []
@@ -169,7 +194,16 @@ class MeanW2V(Vectorizer):
             vectors = np.mean(vectors, axis=0)
             X.append(self.pca.transform(vectors).reshape(-1))
             y.append(labels[i])
-        return np.array(X), np.array(y)
+            if (meta_features is not None):
+                m.append(meta_features[i])
+        
+        if meta_features is not None:
+            return np.array(X), np.array(y), np.array(m)
+        else:
+            return np.array(X), np.array(y)
+
+    def to_string(self):
+        return "Mean_{}".format(self.w2v.to_string())
 
 
 class TFIDF(Vectorizer):
@@ -183,8 +217,12 @@ class TFIDF(Vectorizer):
         self.pca.fit(X)
         return None
 
-    def transform(self, text, labels):
+    def transform(self, text, labels, meta_features):
         X = self.pca.transform(np.array(self.tfidf_vectorizer.transform(
             text.apply(lambda X: ' '.join(X))).todense()))
         y = np.array(labels)
+        
         return X, y
+
+    def to_string(self):
+        return "TFIDF"
