@@ -19,6 +19,7 @@ N_META_FEATURES = 9
 BEST_CLS = TextNumericalInputsClassifier(vector_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
                                          dense_size=64, numeric_feature_size=N_META_FEATURES,
                                          dropout=0.2)  # todo: change cls according to the best one.
+BEST_CLS = SVMClassifier(kernel='rbf')
 
 
 def load_best_model():
@@ -74,7 +75,11 @@ def predict(m, fn):
         X = np.hstack((meta_features, X))
 
     y_pred = m.predict(X)
-    return list(y_pred.detach().numpy())
+    if isinstance(y_pred, np.ndarray):
+        lst = list(y_pred)
+    else:
+        lst = list(y_pred.detach().numpy())
+    return lst
 
 
 def get_best_model(max_metric, fn):
@@ -154,7 +159,7 @@ def save_pred_to_file(pred_list):
     """
     Creates the results file. It has a single, space separated line containing only zeros and ones (integers)
      denoting the predicted class (0 for Trump, 1 for a staffer).
-     The order of the labels correspond to the tweet order in the testset.
+     The order of the labels correspond to the tweet order in the test set.
     Args:
         pred_list: predictions list (0 for Trump, 1 for a staffer).
     """
@@ -164,14 +169,33 @@ def save_pred_to_file(pred_list):
 
 
 if __name__ == '__main__':
-    # cls = load_best_model()
-    # preds = predict(cls, "trump_test.tsv")
-    # save_pred_to_file(preds)
-    # train_best_model()
+    cls = train_best_model()
+    cls.save()
+    cls = load_best_model()
+    preds = predict(cls, "trump_test.tsv")
+    save_pred_to_file(preds)
+
+    ds = preprocess('trump_train.tsv', train=True)
+    vectorize = TFIDF(VECTOR_SIZE)
+    X, y = vectorize.fit_transform(ds['text'], ds['device'])
+    preds = cls.predict(X)
+
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    ds["datetime"] = pd.to_datetime(ds["timestamp"])
+    ds["target"] = preds
+
+    fig, axs = plt.subplots(figsize=(12, 4))
+    ds.groupby(ds["datetime"].dt.hour)["target"].mean().plot(
+        kind='bar', rot=0, ax=axs)
+    plt.show()
+
+
 
     """ MAIN CODE FIND BEST"""
-    data = get_best_model("accuracy", "trump_train.tsv")
-    plot_all(data)
+    # data = get_best_model("accuracy", "trump_train.tsv")
+    # plot_all(data)
 
     """ SAVE W2V CODE"""
     # ds = preprocess('trump_train.tsv', train=True)
