@@ -14,13 +14,11 @@ class KFoldCV():
         i = 0
         for train_index, test_index in self.kf.split(X, y):
             i += 1
-            print("Fold number:{} start".format(i))
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
             temp_cls = deepcopy(cls)
             temp_cls.train(X_train, y_train)
             y_pred = temp_cls.predict(X_test)
-            # print("Fold number:{} finished".format(i))
             fold_scores = evaluate_metrics(y_test, y_pred)
             for key in scores:
                 scores[key] += fold_scores[key]
@@ -30,7 +28,7 @@ class KFoldCV():
             scores[key] /= self.n_splits
 
         temp_cls = deepcopy(cls)
-        temp_cls.train(X,y)
+        temp_cls.train(X, y)
         y_prob = temp_cls.predict_proba(X)
         fpr, tpr = evaluate_roc(y, y_prob)
 

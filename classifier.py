@@ -43,11 +43,9 @@ class Classifier(ABC):
 
     def save(self):
         pickle.dump(self.model, open(self.model_file_name, 'wb'))
-        # dump(self.model, f'{self.model_file_name}.joblib')
 
     def load(self):
         self.model = pickle.load(open(self.model_file_name, 'rb'))
-        # self.model = load(f'{self.model_file_name}.joblib')
         return self
 
 
@@ -142,9 +140,6 @@ class BasicNN(Classifier):
 
             with torch.no_grad():
                 y_pred = self.model.forward(X_train)
-            # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
-            #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
-            # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
         return None
 
     def predict(self, X_test):
@@ -236,10 +231,7 @@ class LSTMClassifier(Classifier):
                 self.optimizer.step()
             # with torch.no_grad():
                 #y_pred = self.model.forward(X_train_tensor)
-                # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
-                #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
 
-        return None
 
     def predict(self, X_test):
         tensor_pred = self.model(torch.Tensor(X_test))
@@ -300,8 +292,6 @@ class LSTMTextNN(nn.Module):
 
         out = self.sigmoid(out)
 
-        # out = out.view(batch_size, -1)
-        # out = out[:,-1]
         return out
 
 
@@ -346,11 +336,7 @@ class TextNumericalInputsClassifier(Classifier):
                 with torch.no_grad():
                     y_pred = self.model.forward(
                         X_train_tensor, meta_data_tensor)
-                # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
-                #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
-                # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
-            if (i % 10 == 0):
-                print("epoch {}".format(i))
+
 
     def predict(self, X_test):
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
