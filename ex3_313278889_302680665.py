@@ -12,6 +12,7 @@ import numpy as np
 import pickle
 import pandas as pd
 
+# PARAMS
 VECTOR_SIZE = 50
 CONCAT_VECTOR_SIZE = 30
 NUM_OF_WORDS = 14
@@ -74,10 +75,23 @@ def predict(m, fn):
         X = np.hstack((meta_features, X))
 
     y_pred = m.predict(X)
-    return list(y_pred.detach().numpy())
+    if isinstance(y_pred, np.ndarray):
+        lst = list(y_pred)
+    else:
+        lst = list(y_pred.detach().numpy())
+    return lst
 
 
 def get_best_model(max_metric, fn):
+    """
+    The function compares performances across all algorithms and vectorization methods
+    Args:
+        max_metric: metric to compare by (accuracy, precision, recall, auc or f1)
+        fn: the full path to a file in the same format as "trump_train.tsv"
+
+    Returns:
+        data: a list with all scores for each algorithm & vectorization method
+    """
     best_model = None
     best_vectorize = None
     best_score = 0
@@ -92,9 +106,6 @@ def get_best_model(max_metric, fn):
                   CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
         MeanW2V(W2VReduced('./glove_reduced'), VECTOR_SIZE),
         MeanW2V(W2VReduced('./gensim_reduced'), VECTOR_SIZE),
-
-        # ConcatW2V(W2VGlove(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
-        # ConcatW2V(W2VGensim(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
     ]
 
     kf = KFoldCV(n_splits=5, shuffle=True)
@@ -112,7 +123,7 @@ def get_best_model(max_metric, fn):
             SVMClassifier(kernel='linear'),
             SVMClassifier(kernel='rbf'),
             # # SVMClassifier(kernel='poly'),
-            BasicNN(input_size=vector_size*num_of_words, n_epochs=10),
+            BasicNN(input_size=vector_size * num_of_words, n_epochs=10),
             LSTMClassifier(vector_size, 2, 32, dropout=0.1, n_epochs=20),
             TextNumericalInputsClassifier(vector_size=vector_size, n_layers=2, linear_dim=32, n_epochs=20,
                                           dense_size=16, numeric_feature_size=meta_features.shape[1], dropout=0.1)
@@ -136,7 +147,7 @@ def get_best_model(max_metric, fn):
             print("{}_{} results are: {}".format(
                 cls.to_string(), vectorize.to_string(), scores))
             data.append({"classifier": cls_trained, "scores": scores,
-                        "vectorize": vectorize, "fpr": fpr, "tpr": tpr})
+                         "vectorize": vectorize, "fpr": fpr, "tpr": tpr})
             if scores[max_metric] > best_score:
                 best_model = cls
                 best_vectorize = vectorize
@@ -162,13 +173,14 @@ def save_pred_to_file(pred_list):
     """
     Creates the results file. It has a single, space separated line containing only zeros and ones (integers)
      denoting the predicted class (0 for Trump, 1 for a staffer).
-     The order of the labels correspond to the tweet order in the testset.
+     The order of the labels correspond to the tweet order in the test set.
     Args:
         pred_list: predictions list (0 for Trump, 1 for a staffer).
     """
     with open(f'{ID_1}_{ID_2}.txt', 'w') as f:
         for item in pred_list:
             f.write("%s " % item)
+
 
 def trump_test(m, fn):
     """
@@ -189,18 +201,24 @@ def trump_test(m, fn):
         X = np.hstack((meta_features, X))
 
     y_pred = m.predict(X)
-    mask = (ds['timestamp'] < pd.Timestamp(year=2016, month=11, day=8)) & (ds['timestamp'] > pd.Timestamp(year=2016, month=10, day=8))
+    mask = (ds['timestamp'] < pd.Timestamp(year=2016, month=11, day=8)) & (
+            ds['timestamp'] > pd.Timestamp(year=2016, month=10, day=8))
     print("true:")
     print(ds['device'][mask].to_list())
     print("prediction:")
     print(list(y_pred[mask]))
-    print(evaluate_metrics(ds['device'][mask].to_list(),list(y_pred[mask])))
+    print(evaluate_metrics(ds['device'][mask].to_list(), list(y_pred[mask])))
+
 
 if __name__ == '__main__':
-    # cls = load_best_model()
+    """ CHECK DRIVER'S FUNCTIONS """
+    cls = load_best_model()
     # preds = predict(cls, "trump_test.tsv")
     # save_pred_to_file(preds)
-    # train_best_model()
+    #
+    # cls = train_best_model()
+    # print(predict(cls, "trump_test.tsv"))
+    # print(preds)
 
     """ MAIN CODE FIND BEST"""
     # data = get_best_model("accuracy", "trump_train.tsv")
@@ -216,13 +234,7 @@ if __name__ == '__main__':
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
 
-    # for meta-features addition
-    # meta_features = calculate_features("trump_train.tsv").to_numpy()
-    # X = np.hstack((meta_features, X))
-    # cls = TextNumericalInputsClassifier(input_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
-    #                                     dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2, n_epochs=5)
-
     """ TRUMP TEST"""
-    m = train_best_model()
-    pred = trump_test(m,'trump_train.tsv')
-    print(pred)
+    # m = train_best_model()
+    # pred = trump_test(m, 'trump_train.tsv')
+    # print(pred)

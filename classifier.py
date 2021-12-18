@@ -11,6 +11,9 @@ from metrics import evaluate_metrics
 
 
 class Classifier(ABC):
+    """
+    This Class is an abstract class that represents a classifier interface and abstract methods
+    """
 
     def __init__(self):
         super().__init__()
@@ -22,10 +25,6 @@ class Classifier(ABC):
         pass
 
     @abstractmethod
-    def evaluate(self, X_test, Y_test):
-        pass
-
-    @abstractmethod
     def get_cls(self):
         pass
 
@@ -42,70 +41,158 @@ class Classifier(ABC):
         pass
 
     def save(self):
+        """
+        Saves a trained model as a pickle file
+        Returns:
+
+        """
         pickle.dump(self.model, open(self.model_file_name, 'wb'))
-        # dump(self.model, f'{self.model_file_name}.joblib')
 
     def load(self):
+        """
+        Loads a trained model from a pickle file
+        Returns:
+            Classifier instance with the loaded model
+
+        """
         self.model = pickle.load(open(self.model_file_name, 'rb'))
-        # self.model = load(f'{self.model_file_name}.joblib')
         return self
 
 
 class LRClassifier(Classifier):
+    """
+    This Class implements the Classifier class, implementing Logistic Regression Classifier
+    """
+
     def __init__(self):
         super().__init__()
         self.model = LogisticRegression()
 
     def get_cls(self):
+        """
+        The method returns the model
+        Returns:
+            model: Logistic Regression model
+        """
         return self.model
 
     def train(self, X_train, y_train):
+        """
+        The method trains the LR model
+        Args:
+            X_train: word embeddings
+            y_train: true labels
+
+        Returns:
+            None
+
+        """
         self.model = self.model.fit(X_train, y_train)
         return
 
     def predict(self, X_test):
+        """
+        The method classifies the input data to trump (0) or staffer (1)
+        Args:
+            X_test: Tweets to classify
+        Returns:
+            list of predictions
+        """
         return self.model.predict(X_test)
 
     def predict_proba(self, X_test):
+        """
+        Returns the probability of each prediction's option
+        Args:
+            X_test:  Tweets to classify
+
+        Returns:
+            list of probabilities
+        """
         return self.model.predict_proba(X_test)[:, 1]
 
-    def evaluate(self, X_test, Y_test):
-        pass
-
     def to_string(self):
+        """
+
+        Returns: The name of the algorithm
+
+        """
         return "Logistic_Regression"
 
 
 class SVMClassifier(Classifier):
+    """
+    This Class implements the Classifier class, implementing SVM Classifier
+    """
+
     def __init__(self, kernel='liner', gamma='scale'):
         super().__init__()
         self.kernel = kernel
         self.model = SVC(kernel=kernel, gamma=gamma, probability=True)
 
     def get_cls(self):
+        """
+        The method returns the model
+        Returns:
+            model: SVM model
+        """
         return self.model
 
     def train(self, X_train, y_train):
+        """
+        The method trains the LR model
+        Args:
+            X_train: word embeddings
+            y_train: true labels
+
+        Returns:
+            The classifier
+
+        """
         self.model.fit(X_train, y_train)
         return self
 
     def predict(self, X_test):
+        """
+        The method classifies the input data to trump (0) or staffer (1)
+        Args:
+            X_test: Tweets to classify
+        Returns:
+            list of predictions
+        """
         return self.model.predict(X_test)
 
     def predict_proba(self, X_test):
+        """
+        Returns the probability of each prediction's option
+        Args:
+            X_test:  Tweets to classify
+
+        Returns:
+            list of probabilities
+        """
         return self.model.predict_proba(X_test)[:, 1]
 
-    def evaluate(self, X_test, Y_test):
-        pass
-
     def save(self):
+        """
+        Saves the model as a pickle file
+
+        """
         pickle.dump(self.model, open(self.model_file_name, 'wb'))
 
     def to_string(self):
+        """
+
+        Returns: The name of the algorithm
+
+        """
         return "SVM_{}".format(self.kernel)
 
 
 class BasicNN(Classifier):
+    """
+    This Class implements the Classifier class, implementing Dense DNN Classifier
+    """
     def __init__(self, input_size, n_epochs=50, batch_size=32, criterion=nn.CrossEntropyLoss()):
         super().__init__()
         self.model = nn.Sequential(
@@ -121,9 +208,24 @@ class BasicNN(Classifier):
         self.losses = []
 
     def get_cls(self):
+        """
+        The method returns the model
+        Returns:
+            model: Dense DNN model
+        """
         return self.model
 
     def train(self, X_train, y_train):
+        """
+        The method trains the dense DNN model
+        Args:
+            X_train: word embeddings
+            y_train: true labels
+
+        Returns:
+            The classifier
+
+        """
         X_train = torch.Tensor(X_train)
         y_train = torch.LongTensor(y_train)
 
@@ -142,27 +244,44 @@ class BasicNN(Classifier):
 
             with torch.no_grad():
                 y_pred = self.model.forward(X_train)
-            # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
-            #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
-            # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
         return None
 
     def predict(self, X_test):
+        """
+        The method classifies the input data to trump (0) or staffer (1)
+        Args:
+            X_test: Tweets to classify
+        Returns:
+            list of predictions
+        """
         tensor_pred = self.model(torch.Tensor(X_test))
         return tensor_pred.max(1).indices
 
     def predict_proba(self, X_test):
+        """
+        Returns the probability of each prediction's option
+        Args:
+            X_test:  Tweets to classify
+
+        Returns:
+            list of probabilities
+        """
         tensor_pred = self.model(torch.Tensor(X_test))
         return tensor_pred.detach().numpy()[:, 1]
 
-    def evaluate(self, X_test, Y_test):
-        pass
-
     def to_string(self):
+        """
+
+        Returns: The name of the algorithm
+
+        """
         return "DNN"
 
 
 class LSTMNET(nn.Module):
+    """
+    This class implements an LSTM neural network
+    """
     def __init__(self, input_size, n_layers, linear_dim, dropout=0.5):
         super(LSTMNET, self).__init__()
         self.n_layers = n_layers
@@ -198,12 +317,13 @@ class LSTMNET(nn.Module):
         out = self.fc(out)
         out = self.sigmoid(out)
 
-        # out = out.view(batch_size, -1)
-        # out = out[:,-1]
         return out
 
 
 class LSTMClassifier(Classifier):
+    """
+    This Class implements the Classifier class, implementing LSTM NN Classifier
+    """
     def __init__(self, input_size, n_layers, linear_dim, dropout=0.5, n_epochs=50, batch_size=32,
                  criterion=nn.CrossEntropyLoss()):
         super().__init__()
@@ -215,18 +335,32 @@ class LSTMClassifier(Classifier):
         self.losses = []
 
     def get_cls(self):
+        """
+        The method returns the model
+        Returns:
+            model: LSTM model
+        """
         return self.model
 
     def train(self, X_train, y_train):
+        """
+        The method trains the LSTM model
+        Args:
+            X_train: word embeddings
+            y_train: true labels
+
+        Returns:
+            The classifier
+
+        """
         for i in range(self.n_epochs):
             self.model.train()
             X_train, y_train = shuffle(X_train, y_train)
             X_train_tensor = torch.Tensor(X_train)
             y_train_tensor = torch.LongTensor(y_train)
-            # y_tag_tensor = None
             for j in range(int(X_train_tensor.size()[0] // self.batch_size)):
                 y_pred_tensor = self.model.forward(
-                    X_train_tensor[j * self.batch_size:(j + 1) * self.batch_size])  # no batchs ?
+                    X_train_tensor[j * self.batch_size:(j + 1) * self.batch_size])
                 loss = self.criterion(
                     y_pred_tensor, y_train_tensor[j * self.batch_size:(j + 1) * self.batch_size])
                 self.losses.append(loss)
@@ -234,29 +368,42 @@ class LSTMClassifier(Classifier):
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-            # with torch.no_grad():
-                #y_pred = self.model.forward(X_train_tensor)
-                # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
-                #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
 
-        return None
 
     def predict(self, X_test):
+        """
+        The method classifies the input data to trump (0) or staffer (1)
+        Args:
+            X_test: Tweets to classify
+        Returns:
+            list of predictions
+        """
         tensor_pred = self.model(torch.Tensor(X_test))
         return tensor_pred.max(1).indices
 
     def predict_proba(self, X_test):
+        """
+        Returns the probability of each prediction's option
+        Args:
+            X_test:  Tweets to classify
+
+        Returns:
+            list of probabilities
+        """
         tensor_pred = self.model(torch.Tensor(X_test))
         return tensor_pred.detach().numpy()[:, 1]
 
-    def evaluate(self, X_test, Y_test):
-        pass
-
     def to_string(self):
+        """
+
+        Returns: The name of the algorithm
+
+        """
         return "LSTM"
 
 
 class LSTMTextNN(nn.Module):
+    """ This Class implements LSTM with concatenation of meta-features neural network"""
     def __init__(self, input_size, n_layers, linear_dim, dense_size, numeric_feature_size, dropout=0.5):
         super(LSTMTextNN, self).__init__()
         self.n_layers = n_layers
@@ -268,7 +415,7 @@ class LSTMTextNN(nn.Module):
 
         self.fc1 = nn.Sequential(nn.Linear(linear_dim, dense_size), nn.ReLU())
         self.fc2 = nn.Sequential(
-            nn.Linear(dense_size + numeric_feature_size, 16), nn.ReLU(),nn.BatchNorm1d(16),nn.Linear(16, 2))
+            nn.Linear(dense_size + numeric_feature_size, 16), nn.ReLU(), nn.BatchNorm1d(16), nn.Linear(16, 2))
 
         self.sigmoid = nn.Sigmoid()
 
@@ -300,12 +447,13 @@ class LSTMTextNN(nn.Module):
 
         out = self.sigmoid(out)
 
-        # out = out.view(batch_size, -1)
-        # out = out[:,-1]
         return out
 
 
 class TextNumericalInputsClassifier(Classifier):
+    """
+    This Class implements the Classifier class, implementing LSTM with meta-features Classifier
+    """
     def __init__(self, vector_size, n_layers, linear_dim, dense_size, numeric_feature_size, dropout=0.5, n_epochs=50,
                  batch_size=32,
                  criterion=nn.CrossEntropyLoss()):
@@ -320,6 +468,16 @@ class TextNumericalInputsClassifier(Classifier):
         self.losses = []
 
     def train(self, X_train, y_train):
+        """
+        The method trains the LSTM with meta-features model
+        Args:
+            X_train: word embeddings
+            y_train: true labels
+
+        Returns:
+            The classifier
+
+        """
         for i in range(self.n_epochs):
             self.model.train()
             X_train, y_train = shuffle(X_train, y_train)
@@ -346,13 +504,15 @@ class TextNumericalInputsClassifier(Classifier):
                 with torch.no_grad():
                     y_pred = self.model.forward(
                         X_train_tensor, meta_data_tensor)
-                # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
-                #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
-                # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
-            if (i % 10 == 0):
-                print("epoch {}".format(i))
 
     def predict(self, X_test):
+        """
+        The method classifies the input data to trump (0) or staffer (1)
+        Args:
+            X_test: Tweets to classify
+        Returns:
+            list of predictions
+        """
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
         meta_data_tensor = torch.LongTensor(
             X_test[:, :self.numeric_feature_size])
@@ -360,17 +520,32 @@ class TextNumericalInputsClassifier(Classifier):
         return tensor_pred.max(1).indices
 
     def predict_proba(self, X_test):
+        """
+        Returns the probability of each prediction's option
+        Args:
+            X_test:  Tweets to classify
+
+        Returns:
+            list of probabilities
+        """
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
         meta_data_tensor = torch.LongTensor(
             X_test[:, :self.numeric_feature_size])
         tensor_pred = self.model(X_test_tensor, meta_data_tensor)
         return tensor_pred.detach().numpy()[:, 1]
 
-    def evaluate(self, X_test, Y_test):
-        pass
-
     def get_cls(self):
+        """
+        The method returns the model
+        Returns:
+            model: LSTM model
+        """
         return self.model
 
     def to_string(self):
+        """
+
+        Returns: The name of the algorithm
+
+        """
         return "LSTM_TEXT"
