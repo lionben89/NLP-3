@@ -7,7 +7,8 @@ import numpy as np
 import gensim.downloader as api
 from gensim.models.word2vec import Word2Vec
 from gensim.models import KeyedVectors
-import pickle
+from zipfile import ZipFile
+import os
 
 
 class W2VCore(ABC):
@@ -44,7 +45,11 @@ class W2VCore(ABC):
         for t in types:
             df[t] = self.get_vector(t).reshape(-1).tolist()
 
-        df.to_pickle(path)
+        df.to_pickle(path+'.pkl')
+        zip_file = ZipFile("{}.zip".format(path), "w")
+        zip_file.write("{}.pkl".format(path))
+        zip_file.close()
+        os.remove(path+'.pkl')
     
     @abstractmethod
     def to_string(self):
@@ -61,7 +66,7 @@ class W2VGlove(W2VCore):
     def get_vector(self, token):
         return self.w2v[token].numpy().reshape(1, -1)
 
-    def save(self, text, path="./glove_reduced.pkl"):
+    def save(self, text, path="./glove_reduced"):
         super().save(text, path)
     
     def to_string(self):
@@ -83,7 +88,7 @@ class W2VGensim(W2VCore):
         except:
             return np.zeros((1, int(self.w2v.vectors.shape[1])))
 
-    def save(self, text, path='./gensim_reduced.pkl'):
+    def save(self, text, path='./gensim_reduced'):
         super().save(text, path)
         
     def to_string(self):
@@ -96,7 +101,9 @@ class W2VReduced(W2VCore):
         self.path = path
 
     def load_vectors(self, filename):
-        return pd.read_pickle(filename)
+        with ZipFile(filename+'.zip', 'r') as zip_ref:
+            zip_ref.extractall('./')
+        return pd.read_pickle(filename+'.pkl')
 
     def get_all_vectors(self):
         return self.w2v.to_numpy()

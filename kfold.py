@@ -34,4 +34,4 @@ class KFoldCV():
         y_prob = temp_cls.predict_proba(X)
         fpr, tpr = evaluate_roc(y, y_prob)
 
-        return scores, fpr, tpr
+        return scores, fpr, tpr, temp_cls
