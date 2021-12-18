@@ -7,18 +7,15 @@ from preprocess import preprocess
 from vectorize import TFIDF, W2VGensim, W2VReduced, W2VGlove, MeanW2V, ConcatW2V
 from kfold import KFoldCV
 from classifier import LRClassifier, BasicNN, SVMClassifier, LSTMClassifier, TextNumericalInputsClassifier
-from visualize import plot_all
 import numpy as np
 
+# PARAMS
 VECTOR_SIZE = 50
 CONCAT_VECTOR_SIZE = 20
 NUM_OF_WORDS = 10
 ID_1 = 313278889
 ID_2 = 302680665
 N_META_FEATURES = 9
-BEST_CLS = TextNumericalInputsClassifier(vector_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
-                                         dense_size=64, numeric_feature_size=N_META_FEATURES,
-                                         dropout=0.2)  # todo: change cls according to the best one.
 BEST_CLS = SVMClassifier(kernel='rbf')
 
 
@@ -83,6 +80,15 @@ def predict(m, fn):
 
 
 def get_best_model(max_metric, fn):
+    """
+    The function compares performances across all algorithms and vectorization methods
+    Args:
+        max_metric: metric to compare by (accuracy, precision, recall, auc or f1)
+        fn: the full path to a file in the same format as "trump_train.tsv"
+
+    Returns:
+        data: a list with all scores for each algorithm & vectorization method
+    """
     best_model = None
     best_vectorize = None
     best_score = 0
@@ -97,9 +103,6 @@ def get_best_model(max_metric, fn):
                   CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
         ConcatW2V(W2VReduced('./gensim_reduced_20.pkl'),
                   CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
-
-        # ConcatW2V(W2VGlove(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
-        # ConcatW2V(W2VGensim(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
     ]
 
     kf = KFoldCV(n_splits=5, shuffle=True)
@@ -116,7 +119,6 @@ def get_best_model(max_metric, fn):
             LRClassifier(),
             SVMClassifier(kernel='linear'),
             SVMClassifier(kernel='rbf'),
-            # SVMClassifier(kernel='poly'),
             BasicNN(input_size=vector_size * num_of_words, n_epochs=3),
             LSTMClassifier(vector_size, 2, 64, dropout=0.2),
             TextNumericalInputsClassifier(vector_size=vector_size, n_layers=2, linear_dim=64,
@@ -175,24 +177,6 @@ if __name__ == '__main__':
     preds = predict(cls, "trump_test.tsv")
     save_pred_to_file(preds)
 
-    ds = preprocess('trump_train.tsv', train=True)
-    vectorize = TFIDF(VECTOR_SIZE)
-    X, y = vectorize.fit_transform(ds['text'], ds['device'])
-    preds = cls.predict(X)
-
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    ds["datetime"] = pd.to_datetime(ds["timestamp"])
-    ds["target"] = preds
-
-    fig, axs = plt.subplots(figsize=(12, 4))
-    ds.groupby(ds["datetime"].dt.hour)["target"].mean().plot(
-        kind='bar', rot=0, ax=axs)
-    plt.show()
-
-
-
     """ MAIN CODE FIND BEST"""
     # data = get_best_model("accuracy", "trump_train.tsv")
     # plot_all(data)
@@ -205,9 +189,3 @@ if __name__ == '__main__':
     # vectorize1 = MeanW2V(W2VGensim(), CONCAT_VECTOR_SIZE)
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
-
-    # for meta-features addition
-    # meta_features = calculate_features("trump_train.tsv").to_numpy()
-    # X = np.hstack((meta_features, X))
-    # cls = TextNumericalInputsClassifier(input_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
-    #                                     dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2, n_epochs=5)
