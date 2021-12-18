@@ -134,3 +134,4 @@ dmypy.json
 .word_vectors_cache/glove.840B.300d.txt.pt
 .word_vectors_cache/glove.840B.300d.zip
 GoogleNews-vectors-negative300.bin.gz
+get_best_model_results.pkl

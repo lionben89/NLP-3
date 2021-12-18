@@ -67,7 +67,7 @@ class LRClassifier(Classifier):
         return self.model.predict(X_test)
 
     def predict_proba(self, X_test):
-        return self.model.predict_proba(X_test)[:,1]
+        return self.model.predict_proba(X_test)[:, 1]
 
     def evaluate(self, X_test, Y_test):
         pass
@@ -80,7 +80,7 @@ class SVMClassifier(Classifier):
     def __init__(self, kernel='liner', gamma='scale'):
         super().__init__()
         self.kernel = kernel
-        self.model = SVC(kernel=kernel, gamma=gamma,probability=True)
+        self.model = SVC(kernel=kernel, gamma=gamma, probability=True)
 
     def get_cls(self):
         return self.model
@@ -93,7 +93,7 @@ class SVMClassifier(Classifier):
         return self.model.predict(X_test)
 
     def predict_proba(self, X_test):
-        return self.model.predict_proba(X_test)[:,1]
+        return self.model.predict_proba(X_test)[:, 1]
 
     def evaluate(self, X_test, Y_test):
         pass
@@ -153,7 +153,7 @@ class BasicNN(Classifier):
 
     def predict_proba(self, X_test):
         tensor_pred = self.model(torch.Tensor(X_test))
-        return tensor_pred.detach().numpy()[:,1]
+        return tensor_pred.detach().numpy()[:, 1]
 
     def evaluate(self, X_test, Y_test):
         pass
@@ -171,7 +171,8 @@ class LSTMNET(nn.Module):
         self.lstm = nn.LSTM(input_size, linear_dim, n_layers,
                             dropout=dropout, batch_first=True)
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(linear_dim, 2)
+        self.fc = nn.Sequential(nn.Linear(linear_dim, 16), nn.ReLU(),
+                                nn.Linear(16, 2))
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
@@ -246,7 +247,7 @@ class LSTMClassifier(Classifier):
 
     def predict_proba(self, X_test):
         tensor_pred = self.model(torch.Tensor(X_test))
-        return tensor_pred.detach().numpy()[:,1]
+        return tensor_pred.detach().numpy()[:, 1]
 
     def evaluate(self, X_test, Y_test):
         pass
@@ -265,8 +266,9 @@ class LSTMTextNN(nn.Module):
                             dropout=dropout, batch_first=True)
         self.dropout = nn.Dropout(dropout)
 
-        self.fc1 = nn.Linear(linear_dim, dense_size)
-        self.fc2 = nn.Linear(dense_size + numeric_feature_size, 2)
+        self.fc1 = nn.Sequential(nn.Linear(linear_dim, dense_size), nn.ReLU())
+        self.fc2 = nn.Sequential(
+            nn.Linear(dense_size + numeric_feature_size, 16), nn.ReLU(),nn.BatchNorm1d(16),nn.Linear(16, 2))
 
         self.sigmoid = nn.Sigmoid()
 
@@ -347,6 +349,8 @@ class TextNumericalInputsClassifier(Classifier):
                 # print("epoch: {}. loss:{}. metrics:{}".format(i, np.mean(self.losses[-1 * self.batch_size:]),
                 #                                               evaluate_metrics(y_train, y_pred.max(1).indices)))
                 # print("epoch: {}. metrics:{}".format(i, evaluate_metrics(y_train, y_pred.max(1).indices)))
+            if (i % 10 == 0):
+                print("epoch {}".format(i))
 
     def predict(self, X_test):
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
@@ -354,13 +358,13 @@ class TextNumericalInputsClassifier(Classifier):
             X_test[:, :self.numeric_feature_size])
         tensor_pred = self.model(X_test_tensor, meta_data_tensor)
         return tensor_pred.max(1).indices
-    
+
     def predict_proba(self, X_test):
         X_test_tensor = torch.Tensor(X_test[:, self.numeric_feature_size:])
         meta_data_tensor = torch.LongTensor(
             X_test[:, :self.numeric_feature_size])
         tensor_pred = self.model(X_test_tensor, meta_data_tensor)
-        return tensor_pred.detach().numpy()[:,1]
+        return tensor_pred.detach().numpy()[:, 1]
 
     def evaluate(self, X_test, Y_test):
         pass

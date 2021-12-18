@@ -7,12 +7,15 @@ from preprocess import preprocess
 from vectorize import TFIDF, W2VGensim, W2VReduced, W2VGlove, MeanW2V, ConcatW2V
 from kfold import KFoldCV
 from classifier import LRClassifier, BasicNN, SVMClassifier, LSTMClassifier, TextNumericalInputsClassifier
+from visualize import plot_all
 import numpy as np
+import pickle
+import pandas as pd
 
 # PARAMS
 VECTOR_SIZE = 50
-CONCAT_VECTOR_SIZE = 20
-NUM_OF_WORDS = 10
+CONCAT_VECTOR_SIZE = 30
+NUM_OF_WORDS = 14
 ID_1 = 313278889
 ID_2 = 302680665
 N_META_FEATURES = 9
@@ -97,12 +100,15 @@ def get_best_model(max_metric, fn):
     data = []
     vectorize_methods = [
         TFIDF(VECTOR_SIZE),
-        MeanW2V(W2VReduced('./glove_reduced_50.pkl'), VECTOR_SIZE),
-        MeanW2V(W2VReduced('./gensim_reduced_50.pkl'), VECTOR_SIZE),
-        ConcatW2V(W2VReduced('./glove_reduced_20.pkl'),
+        ConcatW2V(W2VReduced('./glove_reduced'),
                   CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
-        ConcatW2V(W2VReduced('./gensim_reduced_20.pkl'),
+        ConcatW2V(W2VReduced('./gensim_reduced'),
                   CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        MeanW2V(W2VReduced('./glove_reduced'), VECTOR_SIZE),
+        MeanW2V(W2VReduced('./gensim_reduced'), VECTOR_SIZE),
+
+        # ConcatW2V(W2VGlove(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
+        # ConcatW2V(W2VGensim(), CONCAT_VECTOR_SIZE, NUM_OF_WORDS),
     ]
 
     kf = KFoldCV(n_splits=5, shuffle=True)
@@ -119,14 +125,16 @@ def get_best_model(max_metric, fn):
             LRClassifier(),
             SVMClassifier(kernel='linear'),
             SVMClassifier(kernel='rbf'),
-            BasicNN(input_size=vector_size * num_of_words, n_epochs=3),
-            LSTMClassifier(vector_size, 2, 64, dropout=0.2),
-            TextNumericalInputsClassifier(vector_size=vector_size, n_layers=2, linear_dim=64,
-                                          dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2)
+            # # SVMClassifier(kernel='poly'),
+            BasicNN(input_size=vector_size*num_of_words, n_epochs=10),
+            LSTMClassifier(vector_size, 2, 32, dropout=0.1, n_epochs=20),
+            TextNumericalInputsClassifier(vector_size=vector_size, n_layers=2, linear_dim=32, n_epochs=20,
+                                          dense_size=16, numeric_feature_size=meta_features.shape[1], dropout=0.1)
         ]
 
         if (isinstance(vectorize, ConcatW2V) and isinstance(cls, TextNumericalInputsClassifier)):
-            X, y, m = vectorize.fit_transform(ds['text'], ds['device'], meta_features)
+            X, y, m = vectorize.fit_transform(
+                ds['text'], ds['device'], meta_features)
         else:
             X, y = vectorize.fit_transform(ds['text'], ds['device'])
 
@@ -138,11 +146,11 @@ def get_best_model(max_metric, fn):
                     X = np.hstack((meta_features, X))
 
             print("running {}_{}".format(cls.to_string(), vectorize.to_string()))
-            scores, fpr, tpr = kf.run_kfold_cv(X, y, cls)
+            scores, fpr, tpr, cls_trained = kf.run_kfold_cv(X, y, cls)
             print("{}_{} results are: {}".format(
                 cls.to_string(), vectorize.to_string(), scores))
-            data.append({"classifier": cls, "scores": scores,
-                         "vectorize": vectorize, "fpr": fpr, "tpr": tpr})
+            data.append({"classifier": cls_trained, "scores": scores,
+                        "vectorize": vectorize, "fpr": fpr, "tpr": tpr})
             if scores[max_metric] > best_score:
                 best_model = cls
                 best_vectorize = vectorize
@@ -151,9 +159,16 @@ def get_best_model(max_metric, fn):
     print("final results:")
     best_model.train(X, y)  # train on all of the data for generalization
     pred = best_model.predict(X)
-    print("best_model is: {}_{}".format(best_model.to_string(), best_vectorize.to_string()))
+    print("best_model is: {}_{}".format(
+        best_model.to_string(), best_vectorize.to_string()))
     print(evaluate_metrics(y, pred))
     best_model.save()
+    pickle.dump(data, open("get_best_model_results.pkl", 'wb'))
+    return data
+
+
+def load_data():
+    data = pickle.load(open("get_best_model_results.pkl", 'rb'))
     return data
 
 
@@ -169,6 +184,31 @@ def save_pred_to_file(pred_list):
         for item in pred_list:
             f.write("%s " % item)
 
+def trump_test(m, fn):
+    """
+    Args:
+        m: the trained model
+        fn: the full path to a file in the same format as the test set
+
+    Returns:
+        list: a list of 0s and 1s, corresponding to the lines in the specified file.
+    """
+    vectorize = TFIDF(VECTOR_SIZE)
+
+    ds = preprocess(fn, train=True)
+    X, _ = vectorize.fit_transform(ds['text'], ds['device'])
+
+    if isinstance(m, TextNumericalInputsClassifier):
+        meta_features = calculate_features(fn, train=False).to_numpy()
+        X = np.hstack((meta_features, X))
+
+    y_pred = m.predict(X)
+    mask = (ds['timestamp'] < pd.Timestamp(year=2016, month=11, day=8)) & (ds['timestamp'] > pd.Timestamp(year=2016, month=10, day=8))
+    print("true:")
+    print(ds['device'][mask].to_list())
+    print("prediction:")
+    print(list(y_pred[mask]))
+    print(evaluate_metrics(ds['device'][mask].to_list(),list(y_pred[mask])))
 
 if __name__ == '__main__':
     cls = train_best_model()
@@ -179,6 +219,7 @@ if __name__ == '__main__':
 
     """ MAIN CODE FIND BEST"""
     # data = get_best_model("accuracy", "trump_train.tsv")
+    # data = load_data()
     # plot_all(data)
 
     """ SAVE W2V CODE"""
@@ -189,3 +230,14 @@ if __name__ == '__main__':
     # vectorize1 = MeanW2V(W2VGensim(), CONCAT_VECTOR_SIZE)
     # X, y = vectorize1.fit_transform(ds['text'],ds['device'])
     # vectorize1.w2v.save(ds['text'])
+
+    # for meta-features addition
+    # meta_features = calculate_features("trump_train.tsv").to_numpy()
+    # X = np.hstack((meta_features, X))
+    # cls = TextNumericalInputsClassifier(input_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
+    #                                     dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2, n_epochs=5)
+
+    """ TRUMP TEST"""
+    m = train_best_model()
+    pred = trump_test(m,'trump_train.tsv')
+    print(pred)

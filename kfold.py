@@ -28,10 +28,10 @@ class KFoldCV():
         # get average scores
         for key in scores:
             scores[key] /= self.n_splits
-        
+
         temp_cls = deepcopy(cls)
         temp_cls.train(X,y)
         y_prob = temp_cls.predict_proba(X)
         fpr, tpr = evaluate_roc(y, y_prob)
 
-        return scores, fpr, tpr
+        return scores, fpr, tpr, temp_cls
