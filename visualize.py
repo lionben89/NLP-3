@@ -3,11 +3,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import RocCurveDisplay
 
+def autolabel(rects, labels, ax):
+    for idx,rect in enumerate(rects):
+        height = rect.get_height()
+        ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+                labels[idx],
+                ha='center', va='bottom', rotation=0)
+
 def plot_bars(classifiers,scores, metric):
     fig, ax = plt.subplots(layout='constrained')
     ax.set_title(metric)
     ax.set_ylabel("score")
-    ax.bar(classifiers, scores);
+    bar_plot = ax.bar(classifiers, scores);
+    autolabel(bar_plot,scores,ax)
     fig.savefig("{}.png".format(metric))
     
 def plot_loss_graphs(classifiers,losses):
