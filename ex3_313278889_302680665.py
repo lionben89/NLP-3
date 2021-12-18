@@ -211,13 +211,14 @@ def trump_test(m, fn):
 
 
 if __name__ == '__main__':
+    """ CHECK DRIVER'S FUNCTIONS """
     cls = load_best_model()
-    preds = predict(cls, "trump_test.tsv")
-    save_pred_to_file(preds)
-
-    cls = train_best_model()
-    print(predict(cls, "trump_test.tsv"))
-    print(preds)
+    # preds = predict(cls, "trump_test.tsv")
+    # save_pred_to_file(preds)
+    #
+    # cls = train_best_model()
+    # print(predict(cls, "trump_test.tsv"))
+    # print(preds)
 
     """ MAIN CODE FIND BEST"""
     # data = get_best_model("accuracy", "trump_train.tsv")

@@ -11,6 +11,8 @@ from zipfile import ZipFile
 import os
 
 """ This Class is an abstract class that represents the Word to Vec interface and abstract methods"""
+
+
 class W2VCore(ABC):
     def __init__(self, core):
         super().__init__()
@@ -59,17 +61,20 @@ class W2VCore(ABC):
         for t in types:
             df[t] = self.get_vector(t).reshape(-1).tolist()
 
-        df.to_pickle(path+'.pkl')
+        df.to_pickle(path + '.pkl')
         zip_file = ZipFile("{}.zip".format(path), "w")
         zip_file.write("{}.pkl".format(path))
         zip_file.close()
-        os.remove(path+'.pkl')
-    
+        os.remove(path + '.pkl')
+
     @abstractmethod
     def to_string(self):
         pass
 
-""" This Class implenents the W2VCore class using the pretraind glove embeddings"""
+
+""" This Class implements the W2VCore class using the pretrained glove embeddings"""
+
+
 class W2VGlove(W2VCore):
     def __init__(self, **kargs):
         super().__init__(core=GloVe(**kargs))
@@ -95,16 +100,18 @@ class W2VGlove(W2VCore):
 
     def save(self, text, path="./glove_reduced"):
         super().save(text, path)
-    
+
     def to_string(self):
         return "W2V_glove"
 
-""" This Class implenents the W2VCore class using the pretraind gensim google embeddings"""
+
+""" This Class implements the W2VCore class using the pretrained gensim google embeddings"""
+
+
 class W2VGensim(W2VCore):
     def __init__(self, **kargs):
         super().__init__(core=KeyedVectors.load_word2vec_format(
             'GoogleNews-vectors-negative300.bin.gz', binary=True))
-        # super().__init__(core=Word2Vec(api.load('glove-wiki-gigaword-50'),**kargs))
 
     def get_all_vectors(self):
         """This function returns all the vectors
@@ -130,11 +137,14 @@ class W2VGensim(W2VCore):
 
     def save(self, text, path='./gensim_reduced'):
         super().save(text, path)
-        
+
     def to_string(self):
         return "W2V_gensim"
 
-""" This Class implenents the W2VCore class using a pretraind partial embeddings loadded from a zip file"""
+
+""" This Class implements the W2VCore class using a pretrained partial embeddings loaded from a zip file"""
+
+
 class W2VReduced(W2VCore):
     def __init__(self, path):
         super().__init__(core=self.load_vectors(path))
@@ -149,16 +159,16 @@ class W2VReduced(W2VCore):
         Returns:
             [dataframe]: [the loaded embeddings]
         """
-        with ZipFile(filename+'.zip', 'r') as zip_ref:
+        with ZipFile(filename + '.zip', 'r') as zip_ref:
             zip_ref.extractall('./')
-        return pd.read_pickle(filename+'.pkl')
+        return pd.read_pickle(filename + '.pkl')
 
     def get_all_vectors(self):
         """This function returns all the vectors
 
         Returns:
             [list(np.array)]: [list of all the vectors]
-        """        
+        """
         return self.w2v.to_numpy()
 
     def get_vector(self, token):
@@ -178,7 +188,10 @@ class W2VReduced(W2VCore):
     def to_string(self):
         return "W2V_reduced_{}".format(self.path)
 
+
 """ This class represents an interface to vectorizer"""
+
+
 class Vectorizer(ABC):
     def __init__(self, vector_length=200):
         super().__init__()
@@ -207,14 +220,17 @@ class Vectorizer(ABC):
         self.fit(text)
         return self.transform(text, labels, meta_features)
 
-""" This class implements the Vectorize class using a concatination of vectors for each sample"""
+
+""" This class implements the Vectorize class using a concatenation of vectors for each sample"""
+
+
 class ConcatW2V(Vectorizer):
     def __init__(self, core_w2v, vector_length, number_of_words=10):
         """Initiates the class
 
         Args:
             core_w2v (W2VCore): glove, reduced or gensim
-            vector_length (integer): size of the reduced wanted vecor length
+            vector_length (integer): size of the reduced wanted vector length
             number_of_words (int, optional): number of words in a sample. Defaults to 10.
         """
         super().__init__(vector_length)
@@ -229,9 +245,9 @@ class ConcatW2V(Vectorizer):
         """
         self.pca.fit(self.w2v.text_to_vectors(text))
 
-    def transform(self, text, labels,meta_features):
+    def transform(self, text, labels, meta_features):
         """This function transform the dataset into vectorize manner with 
-            concatination of reduced size vectors
+            concatenation of reduced size vectors
 
         Args:
             text ([list(list(vector))]): list of lists of vector tokens
@@ -264,19 +280,22 @@ class ConcatW2V(Vectorizer):
             return np.array(X), np.array(y), np.array(m)
         else:
             return np.array(X), np.array(y)
-    
+
     def to_string(self):
         return "Concat_{}".format(self.w2v.to_string())
 
+
 """ This class implements the Vectorize class using a mean of vectors for each sample"""
+
+
 class MeanW2V(Vectorizer):
     def __init__(self, core_w2v, vector_length):
         """Initiates the class
 
         Args:
             core_w2v (W2VCore): glove, reduced or gensim
-            vector_length (integer): size of the reduced wanted vecor length
-        """        
+            vector_length (integer): size of the reduced wanted vector length
+        """
         super().__init__(vector_length)
         self.w2v = core_w2v
 
@@ -294,7 +313,7 @@ class MeanW2V(Vectorizer):
         vectors = np.array(vectors)
         self.pca.fit(vectors)
 
-    def transform(self, text, labels,meta_features):
+    def transform(self, text, labels, meta_features):
         """This function transform the dataset into vectorize manner with 
             mean of reduced size vectors
 
@@ -305,7 +324,7 @@ class MeanW2V(Vectorizer):
 
         Returns:
             [dataframe]: [vectorize dataset]
-        """        
+        """
         X = []
         y = []
         m = []
@@ -319,7 +338,7 @@ class MeanW2V(Vectorizer):
             y.append(labels[i])
             if (meta_features is not None):
                 m.append(meta_features[i])
-        
+
         if meta_features is not None:
             return np.array(X), np.array(y), np.array(m)
         else:
@@ -328,14 +347,17 @@ class MeanW2V(Vectorizer):
     def to_string(self):
         return "Mean_{}".format(self.w2v.to_string())
 
+
 """ This class implements the Vectorize class using TFIDF vectors for each sample"""
+
+
 class TFIDF(Vectorizer):
     def __init__(self, vector_length):
         """Initiates the class
 
         Args:
-            vector_length (integer): size of the reduced wanted vecor length
-        """           
+            vector_length (integer): size of the reduced wanted vector length
+        """
         super().__init__(vector_length)
         self.tfidf_vectorizer = TfidfVectorizer()
 
@@ -344,7 +366,7 @@ class TFIDF(Vectorizer):
 
         Args:
             text ([list(list(vector))]): list of lists of vector tokens
-        """        
+        """
         X = np.asarray(self.tfidf_vectorizer.fit_transform(
             text.apply(lambda X: ' '.join(X))).todense())
         self.pca.fit(X)
@@ -361,11 +383,11 @@ class TFIDF(Vectorizer):
 
         Returns:
             [dataframe]: [vectorize dataset]
-        """            
+        """
         X = self.pca.transform(np.array(self.tfidf_vectorizer.transform(
             text.apply(lambda X: ' '.join(X))).todense()))
         y = np.array(labels)
-        
+
         return X, y
 
     def to_string(self):
