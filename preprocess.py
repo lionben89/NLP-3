@@ -18,13 +18,13 @@ TIMESTAMP_FEATURES = {
 
 
 def preprocess(filename, train=True):
-    """[summary]
+    """ This function do all the preprocess according to the structure
 
     Args:
-        filename ([type]): [description]
+        filename ([string]): [filename with dataset as tsv]
 
     Returns:
-        [type]: [description]
+        [dataframe]: [dataset after preprocess]
     """
     dataset_train_structure = [{"name": "tweet_id", "func": empty_func},
                                {"name": "user_handle", "func": dummy_encoder},
@@ -51,13 +51,13 @@ def preprocess(filename, train=True):
 
 
 def load_data(filename, column_names):
-    """[summary]
+    """This function loads the dataset into dataframe
 
     Args:
-        filename ([type]): [description]
+        filename ([string]): [filename]
 
     Returns:
-        [type]: [description]
+        [dataframe]: [raw dataset]
     """
     ds = pd.read_table(filename, names=column_names)
     return ds
@@ -68,15 +68,15 @@ def empty_func(ds, column, name):
 
 
 def dummy_encoder(ds, column, name):
-    """[summary]
+    """this function transform a column in the dataframe into dummy code
 
     Args:
-        ds ([type]): [description]
-        column ([type]): [description]
-        name ([type]): [description]
+        ds ([dataframe]): dataset
+        column ([integer]): column index
+        name ([string]): column name
 
     Returns:
-        [type]: [description]
+        [dataframe]: dataset after transformation
     """
     dummies = pd.get_dummies(ds[name], prefix=name)
     ds = ds.drop(columns=[name])
@@ -95,6 +95,16 @@ def remove_punct(text):
 
 
 def text_preprocess(ds, column, name):
+    """This function preprocess the text in the dataset
+
+    Args:
+        ds ([dataframe]): dataset
+        column ([integer]): column index
+        name ([string]): column name
+
+    Returns:
+       [dataframe]: dataset after transformation
+    """
     text = ds[name]
     text = text.str.lower()
     text = text.apply(remove_whitespace)
@@ -105,15 +115,15 @@ def text_preprocess(ds, column, name):
 
 
 def timestamp_preprocess(ds, column, name):
-    """[summary]
+    """This function takes the timestamp in the dataset and create from it features according to the settings above
 
     Args:
-        ds ([type]): [description]
-        column ([type]): [description]
-        name ([type]): [description]
+        ds ([dataframe]): dataset
+        column ([integer]): column index
+        name ([string]): column name
 
     Returns:
-        [type]: [description]
+       [dataframe]: dataset after transformation
     """
     ts = pd.to_datetime(ds[name])
     for feature in TIMESTAMP_FEATURES.keys():
@@ -136,15 +146,15 @@ def timestamp_preprocess(ds, column, name):
 
 
 def label_encoder(ds, column, name):
-    """[summary]
+    """This function transform labels in the column into numbers (label encoder)
 
     Args:
-        ds ([type]): [description]
-        column ([type]): [description]
-        name ([type]): [description]
+        ds ([dataframe]): dataset
+        column ([integer]): column index
+        name ([string]): column name
 
     Returns:
-        [type]: [description]
+       [dataframe]: dataset after transformation
     """
     alowed_labels = ["android", "iphone"]
     ds = ds[ds[name].isin(alowed_labels)]
@@ -154,6 +164,3 @@ def label_encoder(ds, column, name):
     ## iphone 0 , android 1
     return ds
 
-
-if __name__ == '__main__':
-    preprocess("trump_train.tsv")
