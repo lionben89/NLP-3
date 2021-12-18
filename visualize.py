@@ -52,7 +52,7 @@ def plot_all(data):
         cls_name = "{}_{}".format(c_data["classifier"].to_string(),c_data["vectorize"].to_string())
         classifiers.append(cls_name)
         if (hasattr(c_data["classifier"], 'losses')):
-            losses.append(c_data["classifier"].losses)
+            losses.append(list(map(lambda x: x.detach().numpy(),c_data["classifier"].losses)))
             losses_classifiers.append(cls_name)
         for metric in bars.keys():
             bars[metric].append(c_data["scores"][metric])
@@ -64,8 +64,8 @@ def plot_all(data):
         plot_bars(classifiers,bars[metric],metric)
     
     ## plot losses
-    if (len(losses)>0):
-        plot_loss_graphs(losses_classifiers,losses)
+    # if (len(losses)>0):
+    #     plot_loss_graphs(losses_classifiers,losses)
     
     ## plot rocs
     plot_rocs(classifiers,rocs)

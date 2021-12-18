@@ -13,6 +13,7 @@ TIMESTAMP_FEATURES = {
     "month": True,
     "hour": True,
     "minute": True,
+    "year": True
 }
 
 
@@ -129,6 +130,8 @@ def timestamp_preprocess(ds, column, name):
                 ds[feature] = ts.apply(lambda X: X.hour)
             elif feature == "minute":
                 ds[feature] = ts.apply(lambda X: X.minute)
+            elif feature == "year":
+                ds[feature] = ts.apply(lambda X: X.year)
     return ds
 
 

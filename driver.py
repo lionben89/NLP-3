@@ -10,6 +10,7 @@ from classifier import LRClassifier, BasicNN, SVMClassifier, LSTMClassifier, Tex
 from visualize import plot_all
 import numpy as np
 import pickle
+import pandas as pd
 
 VECTOR_SIZE = 50
 CONCAT_VECTOR_SIZE = 30
@@ -17,9 +18,7 @@ NUM_OF_WORDS = 14
 ID_1 = 313278889
 ID_2 = 302680665
 N_META_FEATURES = 9
-BEST_CLS = TextNumericalInputsClassifier(vector_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
-                                         dense_size=64, numeric_feature_size=N_META_FEATURES,
-                                         dropout=0.2)  # todo: change cls according to the best one.
+BEST_CLS = SVMClassifier(kernel='rbf')
 
 
 def load_best_model():
@@ -171,6 +170,31 @@ def save_pred_to_file(pred_list):
         for item in pred_list:
             f.write("%s " % item)
 
+def trump_test(m, fn):
+    """
+    Args:
+        m: the trained model
+        fn: the full path to a file in the same format as the test set
+
+    Returns:
+        list: a list of 0s and 1s, corresponding to the lines in the specified file.
+    """
+    vectorize = TFIDF(VECTOR_SIZE)
+
+    ds = preprocess(fn, train=True)
+    X, _ = vectorize.fit_transform(ds['text'], ds['device'])
+
+    if isinstance(m, TextNumericalInputsClassifier):
+        meta_features = calculate_features(fn, train=False).to_numpy()
+        X = np.hstack((meta_features, X))
+
+    y_pred = m.predict(X)
+    mask = (ds['timestamp'] < pd.Timestamp(year=2016, month=11, day=8)) & (ds['timestamp'] > pd.Timestamp(year=2016, month=10, day=8))
+    print("true:")
+    print(ds['device'][mask].to_list())
+    print("prediction:")
+    print(list(y_pred[mask]))
+    print(evaluate_metrics(ds['device'][mask].to_list(),list(y_pred[mask])))
 
 if __name__ == '__main__':
     # cls = load_best_model()
@@ -179,9 +203,9 @@ if __name__ == '__main__':
     # train_best_model()
 
     """ MAIN CODE FIND BEST"""
-    data = get_best_model("accuracy", "trump_train.tsv")
+    # data = get_best_model("accuracy", "trump_train.tsv")
     # data = load_data()
-    plot_all(data)
+    # plot_all(data)
 
     """ SAVE W2V CODE"""
     # ds = preprocess('trump_train.tsv', train=True)
@@ -197,3 +221,8 @@ if __name__ == '__main__':
     # X = np.hstack((meta_features, X))
     # cls = TextNumericalInputsClassifier(input_size=VECTOR_SIZE, n_layers=2, linear_dim=64,
     #                                     dense_size=64, numeric_feature_size=meta_features.shape[1], dropout=0.2, n_epochs=5)
+
+    """ TRUMP TEST"""
+    m = train_best_model()
+    pred = trump_test(m,'trump_train.tsv')
+    print(pred)
